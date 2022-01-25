@@ -261,6 +261,18 @@ contract("FortunebaoTest", (accounts) => {
       assert.equal(interestInfo.interest, toWei(600)) // 1000 * 20 / 300 * 90 = 600
     })
 
+    it("判断不同时间的利息: 次日利息 第三轮-第二个套餐17%月化 100天以后看有多少利息, 应该还有60天", async () => {
+      // (17 / 3000) 每日利息
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 1) // 白名单质押 第三轮-第二个套餐 第二个套餐最多能拿60天
+      my_deposits = await contractInstance.myDeposits()
+      last_deposit = my_deposits[my_deposits.length - 1]
+      console.log('3 last_deposit = ', last_deposit)
+      let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 101)
+      console.log('3 interestInfo = ', interestInfo)
+      assert.equal(interestInfo.interest, toWei(442)) // 1000 * 17 / 300 * 60 * 1.3 = 442
+    })
+
     xit("判断提前提币是否销毁,", async () => {
        await purchase(1000, 1, 1) // 购买一次
       my_deposits = await contractInstance.myDeposits()
