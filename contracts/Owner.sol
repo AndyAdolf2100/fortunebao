@@ -8,6 +8,7 @@ pragma solidity >=0.7.0 <0.9.0;
 contract Owner {
 
     address internal owner;
+    mapping (address => bool) private userRequestLocked; // 用户一个请求未确认的时候不能进行下一个请求
 
     // event for EVM logging
     event OwnerSet(address indexed oldOwner, address indexed newOwner);
@@ -21,6 +22,16 @@ contract Owner {
         // As a second argument, you can also provide an explanation about what went wrong.
         require(msg.sender == owner, "Caller is not owner");
         _;
+    }
+
+    modifier noReentrancy() {
+      require(
+        !userRequestLocked[msg.sender],
+        "Reentrancy call."
+      );
+      userRequestLocked[msg.sender] = true;
+      _;
+      userRequestLocked[msg.sender] = false;
     }
 
     /**

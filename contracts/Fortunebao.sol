@@ -1,80 +1,27 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.4.22 <0.9.0;
-
 import "./token/ERC20/IERC20.sol";
 import "./token/ERC20/ERC20.sol";
-import "./utils/math/SafeMath.sol";
 import "./CACPAToken.sol";
 import "./CACPBToken.sol";
 import "./CACPCToken.sol";
 import "./CACPToken.sol";
-import "./CacusdtPriceOracleInterface.sol";
 import "./Owner.sol";
+import "./FortunbaoConfig.sol";
 /*
-  理财宝智能合约:
-
-  1. 四期活动一览:
-  第一轮: 2倍利息
-  第二轮: 1.5倍利息
-  第三轮: 1.3倍利息
-  常态轮: 利息正常
-
-  2. 五个套餐利息一览:
-  第一个：每日千5, 计息30天
-  第二个：每日千566666, 计息60天 0.17 / 30
-  第三个：每日千666666, 计息90天 0.2 / 30
-  第四个：每日千8, 计息180天
-  第五个：每日百1, 计息360天
-
-  3. 次日0:00开始计算收益时间
-*/
-
-contract Fortunebao is Owner{
-
+iaT: activityType illegal
+imT: mealType illegal
+ */
+contract Fortunebao is Owner, FortunbaoConfig{
   using SafeMath for uint;
-
-  uint constant private TO_WEI = 1000000000000000000;   // 1e18
-  uint constant private MIN_BONUS = 100000000000000;    // 最小奖励(小数点后4位)
-
-  // 获取cac的USDT价格
-  CacusdtPriceOracleInterface private oracleInstance;
-  address private oracleAddress;
-
   // 黑洞地址
   address private burningAddress;
-
-  uint private SATISFY_USDT_VALUE = _toWei(500);   // 价值500USDT
-  uint private FIRST_MEAL_DAYS = 30;               // 第一个套餐：30天
-  uint private SECOND_MEAL_DAYS = 60;              // 第二个套餐：60天
-  uint private THIRD_MEAL_DAYS = 90;               // 第三个套餐：90天
-  uint private FORTH_MEAL_DAYS = 180;              // 第四个套餐：180天
-  uint private FIFTH_MEAL_DAYS = 360;              // 第五个套餐：360天
-
-  //uint private FIRST_BONUS_RATE = 1.mul(2);             // 第一期活动：2倍
-  //uint private SECOND_BONUS_RATE = 1.mul(15).div(10);   // 第二期活动：1.5倍
-  //uint private THIRD_BONUS_RATE = 1.mul(13).div(10);    // 第三期活动：1.3倍
-  //uint private NORMAL_BONUS_RATE = 1;                   // 常态轮活动：1倍
-
-  uint private COMMON_DENOMINATOR = 1000;   // 通用分母
-
-  // 三轮白名单mapping以及地址列表
-  mapping (address => uint) private firstWhiteList;
-  address[] private firstAddresses;
-  mapping (address => uint) private secondWhiteList;
-  address[] private secondAddresses;
-  mapping (address => uint) private thirdWhiteList;
-  address[] private thirdAddresses;
-
   address private priceLooper;  // 价格查询员
-
   IERC20 private firstToken;    // CACPA token
   IERC20 private secondToken;   // CACPB token
   IERC20 private thirdToken;    // CACPC token
   IERC20 private normalToken;   // CACP token
   ERC20  private bonusToken;    // CAC token 用于利息
-
-  bool private isEnd = false;   // 是否活动已经结束
-
   mapping(uint256=>bool) myRequests;      // oracle  调用请求
   uint private cacusdtPrice = _toWei(8);  // cacusdt 价格(默认是8) TODO
 
@@ -84,12 +31,6 @@ contract Fortunebao is Owner{
   Deposit[] private totalDeposits; // 全部的充值信息(公开)
   Operation[] private allOperations; //  用户操作(公开)
   mapping (address => Deposit[]) public userDeposits; //  用户所有的储蓄记录
-
-  enum OperationType { DEPOSIT, WITHDRAW_PRINCIPAL, WITHDRAW_INTEREST } // 质押、提现本金、提现利息
-  enum ActivityType { FIRST, SECOND, THIRD, NORMAL } // 第1、2、3轮以及常态轮
-  enum MealType { FIRST, SECOND, THIRD, FORTH, FIFTH } // 第1、2、3、4、5套餐
-
-  mapping (address => bool) private userRequestLocked; // 用户一个请求未确认的时候不能进行下一个请求
 
   // 储蓄记录
   struct Deposit {
@@ -117,11 +58,10 @@ contract Fortunebao is Owner{
   }
 
   event DepositSuccessEvent();  // 成功质押
-  event WithdrawSuccessEvent();  // 成功提取
+  event WithdrawSuccessEvent();  // 成功提取本金及利息
   event WithdrawInterestSuccessEvent();  // 成功提取利息
 
-  constructor(address _bonusTokenAddress, address _oracleAddress, address _burningAddress) public {
-    require(!isEnd, 'Activity is not opened!');
+  constructor(address _bonusTokenAddress, address _burningAddress) public {
     // 质押TOKEN发布
     uint miningPoolAmount = _toWei(20000000);                      // 发行量2000万
     firstToken = new CACPAToken(msg.sender, miningPoolAmount);     // 发行CACPA合约
@@ -131,9 +71,6 @@ contract Fortunebao is Owner{
 
     // 利息Token初始化
     bonusToken = ERC20(_bonusTokenAddress);                        // 初始化CAC合约
-    // 预言机初始化
-    oracleAddress = _oracleAddress;
-    oracleInstance = CacusdtPriceOracleInterface(_oracleAddress);  // 初始化Oracle
 
     // 黑洞地址
     burningAddress = _burningAddress;
@@ -142,12 +79,6 @@ contract Fortunebao is Owner{
   function setPriceLooper(address addr) public isOwner {
     priceLooper = addr;
   }
-
-  // 1e18
-  function setTargetUSDTValue (uint value) public isOwner {
-    targetUSDTValue = value;
-  }
-
   // 1e18
   function setCacPrice(uint price) public isPriceLooper{
     cacusdtPrice = price;
@@ -168,36 +99,9 @@ contract Fortunebao is Owner{
     }
   }
 
-  // 获取白名单
-  function getWhiteList(ActivityType activityType) public view isOwner returns(address[] memory){
-    if (activityType == ActivityType.FIRST) {
-      return firstAddresses;
-    }
-    if (activityType == ActivityType.SECOND) {
-      return secondAddresses;
-    }
-    if (activityType == ActivityType.THIRD) {
-      return thirdAddresses;
-    }
-    require(true, 'illegal activityType');
-  }
-
   // 获取用户所有质押信息
   function myDeposits() public view returns(Deposit[] memory) {
     return userDeposits[msg.sender];
-  }
-
-  function getWhiteAddressAmount(ActivityType activityType) public view returns(uint) {
-    if (activityType == ActivityType.FIRST) {
-      return firstWhiteList[msg.sender];
-    }
-    if (activityType == ActivityType.SECOND) {
-      return secondWhiteList[msg.sender];
-    }
-    if (activityType == ActivityType.THIRD) {
-      return thirdWhiteList[msg.sender];
-    }
-    require(true, 'illegal activityType');
   }
 
   function getBonusToken() public view returns(IERC20) {
@@ -229,6 +133,21 @@ contract Fortunebao is Owner{
   struct InterestInfo {
     Deposit deposit;
     uint interest;
+    bool needDepositPunishment;
+  }
+
+  // 获取白名单
+  function getWhiteList(ActivityType activityType) public view isOwner returns(address[] memory){
+    if (activityType == ActivityType.FIRST) {
+      return firstAddresses;
+    }
+    if (activityType == ActivityType.SECOND) {
+      return secondAddresses;
+    }
+    if (activityType == ActivityType.THIRD) {
+      return thirdAddresses;
+    }
+    require(true, 'iaT');
   }
 
   // 计算利息
@@ -253,10 +172,10 @@ contract Fortunebao is Owner{
         if (bonusDays > 0) {
           interest = _getInterestIncreaseRate(tempDeposit.activityType, _makeInterestRate(tempDeposit.mealType, tempDeposit.depositAmount.mul(bonusDays)));
         }
-        //uint interest = _toWei(1) * maxBonusDays * totalDepositDays;
         InterestInfo memory info = InterestInfo(
           tempDeposit,
-          interest - tempDeposit.withdrawedInterest // 应得利息减少已经提取的利息
+          interest - tempDeposit.withdrawedInterest, // 应得利息减少已经提取的利息
+          totalDepositDays >= maxBonusDays // 质押天数是否大于所需天数
         );
         return info;
       }
@@ -265,8 +184,11 @@ contract Fortunebao is Owner{
 
   // 仅提取利息
   function withdrawOnlyInterest(uint depositId) public noReentrancy {
-    uint interest = getInterest(depositId, 0).interest;    // 得到利息
-    Deposit memory d = getInterest(depositId, 0).deposit; // 得到操作的Deposit
+    InterestInfo memory info = getInterest(depositId, 0);
+    uint interest = info.interest;    // 得到利息
+    Deposit memory d = info.deposit; // 得到操作的Deposit
+    require(interest > 0, 'interest is zero');
+
     d.withdrawedInterest = d.withdrawedInterest.add(interest); // 记录应提取的withdrawedInterest
 
     Operation memory newOperation = Operation(
@@ -280,29 +202,64 @@ contract Fortunebao is Owner{
     );
     // 记录操作
     allOperations.push(newOperation);
-    normalToken.transfer(msg.sender, d.depositAmount); // 本金转出都转化为CACP
+    bonusToken.transfer(msg.sender, interest); // 利息转出
+    emit WithdrawInterestSuccessEvent();
   }
 
   // 提取利息以及本金
   function withdrawPrincipal(uint depositId) public noReentrancy {
-    uint interest = getInterest(depositId, 0).interest;    // 得到利息
-    Deposit memory d = getInterest(depositId, 0).deposit; // 得到操作的Deposit
+    InterestInfo memory info = getInterest(depositId, 0);
+    uint interest = info.interest;    // 得到利息
+    Deposit memory d = info.deposit; // 得到操作的Deposit
+    bool needPublishment = info.needDepositPunishment; // 是否需要得到惩罚
+    address transferTarget = msg.sender;
+    uint principal = 0;
+
     d.withdrawedInterest = d.withdrawedInterest.add(interest); // 记录应提取的withdrawedInterest
     d.isWithdrawed = true; // 标记deposit已经提取本金
 
-    Operation memory newOperation = Operation(
-      uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, allOperations.length))), // UUID
-      msg.sender,        // 操作人
-      interest,          // 利息 + 本金
-      block.timestamp,   // 当前时间
-      string(abi.encodePacked("depositAmount:", uint2str(uint(d.depositAmount)), "interest:", uint2str(uint(interest)), "|newWithdrawedInterest:", uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
-      OperationType.WITHDRAW_PRINCIPAL, // 操作类型: 提取本金
-      d // 记录引用
-    );
-    // 记录操作
-    allOperations.push(newOperation);
-    bonusToken.transfer(msg.sender, interest); // 利息转出
-    normalToken.transfer(msg.sender, d.depositAmount); // 本金转出都转化为CACP
+    if (!needPublishment || interest == 0) {
+      Operation memory newOperation = Operation(
+        uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, allOperations.length))), // UUID
+        msg.sender,        // 操作人
+        interest,          // 利息 + 本金
+        block.timestamp,   // 当前时间
+        string(abi.encodePacked("depositAmount:", uint2str(uint(d.depositAmount)), "interest:", uint2str(uint(interest)), "|newWithdrawedInterest:", uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
+        OperationType.WITHDRAW_PRINCIPAL, // 操作类型: 提取本金
+        d // 记录引用
+      );
+      // 记录操作
+      allOperations.push(newOperation);
+      principal = d.depositAmount;
+    } else {
+      // 需要惩罚 惩罚的本金数量是利息的2倍, 最少可扣除至0, 扣除的cac转移到销毁地址
+      Operation memory newOperation = Operation(
+        uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, allOperations.length))), // UUID
+        msg.sender,        // 操作人
+        0,                 // 操作数量
+        block.timestamp,   // 当前时间
+        string(abi.encodePacked("depositAmount:", uint2str(uint(d.depositAmount)), "interest:", uint2str(uint(interest)), "|newWithdrawedInterest:", uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
+        OperationType.WITHDRAW_PUBLISHMENT, // 操作类型: 提取接收惩罚
+        d // 记录引用
+      );
+      // 记录操作
+      allOperations.push(newOperation);
+      // 转移地址变成销毁地址
+      transferTarget = burningAddress;
+      // 惩罚为利息2倍
+      uint pAmount = interest.mul(2);
+      // 还剩余本金的情况下有转账
+      if (d.depositAmount > pAmount) {
+        d.depositAmount.sub(pAmount);
+      }
+    }
+    if (interest > 0) {
+      bonusToken.transfer(transferTarget, interest); // 利息转出
+    }
+    if (principal > 0) {
+      normalToken.transfer(msg.sender, principal); // 本金转出都转化为CACP
+    }
+    emit WithdrawSuccessEvent();
   }
 
 
@@ -357,13 +314,13 @@ contract Fortunebao is Owner{
     require(activityType == ActivityType.FIRST ||
             activityType == ActivityType.SECOND ||
             activityType == ActivityType.THIRD ||
-            activityType == ActivityType.NORMAL, string(abi.encodePacked("activityType is illegal: ", uint2str(uint(activityType)))));
+            activityType == ActivityType.NORMAL, 'iaT');
     // 校验mealType
     require(mealType == MealType.FIRST ||
             mealType == MealType.SECOND ||
             mealType == MealType.THIRD ||
             mealType == MealType.FORTH ||
-            mealType == MealType.FIFTH, string(abi.encodePacked("mealType is illegal: ", uint2str(uint(mealType)))));
+            mealType == MealType.FIFTH, 'imT');
 
     // 允许合约对此用户token余额进行操作
     uint256 allowance = token.allowance(msg.sender, address(this));
@@ -405,107 +362,6 @@ contract Fortunebao is Owner{
 
     token.transferFrom(msg.sender, address(this), newDeposit.depositAmount); // 移动指定质押token余额至合约
     emit DepositSuccessEvent();
-  }
-
-  // 转换成Wei为单位
-  function _toWei(uint _number) private view returns (uint) {
-    return _number.mul(TO_WEI);
-  }
-
-  // 保留4位小数
-  function _rounding(uint _number) private view returns (uint) {
-    return (_number.add(MIN_BONUS.div(2))).div(MIN_BONUS).mul(MIN_BONUS);
-  }
-
-  // uint转字符串
-  function uint2str(uint _i) internal pure returns (string memory _uintAsString) {
-        if (_i == 0) {
-            return "0";
-        }
-        uint j = _i;
-        uint len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint k = len;
-        while (_i != 0) {
-            k = k-1;
-            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
-            bytes1 b1 = bytes1(temp);
-            bstr[k] = b1;
-            _i /= 10;
-        }
-        return string(bstr);
-  }
-
-  // 获取每期活动的利率增加比例并添加后返回
-  function _getInterestIncreaseRate(ActivityType activityType, uint interest) private view returns(uint) {
-    if (activityType == ActivityType.FIRST) {
-      return interest.mul(2); // 2倍
-    }
-    if (activityType == ActivityType.SECOND) {
-      return interest.mul(15).div(10); // 1.5倍
-    }
-    if (activityType == ActivityType.THIRD) {
-      return interest.mul(13).div(10); // 1.3倍
-    }
-    if (activityType == ActivityType.NORMAL) {
-      return interest; // 没有增加
-    }
-    require(true, 'illegal activityType');
-  }
-
-  // 获取每一个套餐的对应最大质押天数
-  function _getMaxBonusDays(MealType mealType) private view returns(uint) {
-    if (mealType == MealType.FIRST) {
-      return FIRST_MEAL_DAYS;
-    }
-    if (mealType == MealType.SECOND) {
-      return SECOND_MEAL_DAYS;
-    }
-    if (mealType == MealType.THIRD) {
-      return THIRD_MEAL_DAYS;
-    }
-    if (mealType == MealType.FORTH) {
-      return FORTH_MEAL_DAYS;
-    }
-    if (mealType == MealType.FIFTH) {
-      return FIFTH_MEAL_DAYS;
-    }
-    require(true, 'illegal mealType');
-  }
-
-  // 获取每一个套餐的对应利率获得的利息
-  function _makeInterestRate(MealType mealType, uint amount) private view returns(uint) {
-    require(amount > 0, '_makeInterestRate: illegal amount');
-    if (mealType == MealType.FIRST) {
-      return _rounding(amount.mul(15).div(3000));
-    }
-    if (mealType == MealType.SECOND) {
-      return _rounding(amount.mul(17).div(3000));
-    }
-    if (mealType == MealType.THIRD) {
-      return _rounding(amount.mul(20).div(3000));
-    }
-    if (mealType == MealType.FORTH) {
-      return _rounding(amount.mul(24).div(3000));
-    }
-    if (mealType == MealType.FIFTH) {
-      return _rounding(amount.mul(30).div(3000));
-    }
-    require(true, 'illegal mealType');
-  }
-
-  modifier noReentrancy() {
-    require(
-      !userRequestLocked[msg.sender],
-      "Reentrancy call."
-    );
-    userRequestLocked[msg.sender] = true;
-    _;
-    userRequestLocked[msg.sender] = false;
   }
 
   modifier isPriceLooper() {
