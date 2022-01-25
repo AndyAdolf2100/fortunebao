@@ -21,10 +21,12 @@ import "./Owner.sol";
 
   2. 五个套餐利息一览:
   第一个：每日千5, 计息30天
-  第二个：每日千6, 计息60天
-  第三个：每日千666666, 计息90天
+  第二个：每日千566666, 计息60天 0.17 / 30
+  第三个：每日千666666, 计息90天 0.2 / 30
   第四个：每日千8, 计息180天
   第五个：每日百1, 计息360天
+
+  3. 次日0:00开始计算收益时间
 */
 
 contract Fortunebao is Owner{
@@ -137,7 +139,6 @@ contract Fortunebao is Owner{
     burningAddress = _burningAddress;
   }
 
-  // 1e18
   function setPriceLooper(address addr) public isOwner {
     priceLooper = addr;
   }
@@ -147,6 +148,7 @@ contract Fortunebao is Owner{
     targetUSDTValue = value;
   }
 
+  // 1e18
   function setCacPrice(uint price) public isPriceLooper{
     cacusdtPrice = price;
   }
@@ -181,7 +183,7 @@ contract Fortunebao is Owner{
   }
 
   // 获取用户所有质押信息
-  function myDeposits() public view returns(Deposit[]) {
+  function myDeposits() public view returns(Deposit[] memory) {
     return userDeposits[msg.sender];
   }
 
@@ -237,14 +239,21 @@ contract Fortunebao is Owner{
     for (uint i = 0; i < userDeposits[msg.sender].length; i ++) {
       if (userDeposits[msg.sender][i].id == depositId) {
         Deposit storage tempDeposit = userDeposits[msg.sender][i];
+        uint totalDepositDays = 0;
         // 质押时间: 天数
-        uint totalDepositDays = ((nowTime - tempDeposit.calcInterestDate) / 1 days);
+        if (nowTime > tempDeposit.calcInterestDate) {
+          totalDepositDays = ((nowTime.sub(tempDeposit.calcInterestDate)).div(1 days));
+        }
         // 套餐收益最大天数
         uint maxBonusDays = _getMaxBonusDays(tempDeposit.mealType);
         // 可获得收益的天数
         uint bonusDays = totalDepositDays > maxBonusDays ? maxBonusDays : totalDepositDays; // 获取收益天数最大为套餐天数
         // 计算利息(活动倍数 + 不同套餐费率)
-        uint interest = _getInterestIncreaseRate(tempDeposit.activityType, _makeInterestRate(tempDeposit.mealType, tempDeposit.depositAmount.mul(bonusDays)));
+        uint interest = 0;
+        if (bonusDays > 0) {
+          interest = _getInterestIncreaseRate(tempDeposit.activityType, _makeInterestRate(tempDeposit.mealType, tempDeposit.depositAmount.mul(bonusDays)));
+        }
+        //uint interest = _toWei(1) * maxBonusDays * totalDepositDays;
         InterestInfo memory info = InterestInfo(
           tempDeposit,
           interest - tempDeposit.withdrawedInterest // 应得利息减少已经提取的利息
@@ -470,21 +479,21 @@ contract Fortunebao is Owner{
 
   // 获取每一个套餐的对应利率获得的利息
   function _makeInterestRate(MealType mealType, uint amount) private view returns(uint) {
-    require(amount > 0, 'illegal amount');
+    require(amount > 0, '_makeInterestRate: illegal amount');
     if (mealType == MealType.FIRST) {
-      return _rounding(amount.mul(5).div(1000));
+      return _rounding(amount.mul(15).div(3000));
     }
     if (mealType == MealType.SECOND) {
-      return _rounding(amount.mul(6).div(1000));
+      return _rounding(amount.mul(17).div(3000));
     }
     if (mealType == MealType.THIRD) {
-      return _rounding(amount.mul(2).div(300));
+      return _rounding(amount.mul(20).div(3000));
     }
     if (mealType == MealType.FORTH) {
-      return _rounding(amount.mul(8).div(1000));
+      return _rounding(amount.mul(24).div(3000));
     }
     if (mealType == MealType.FIFTH) {
-      return _rounding(amount.mul(1).div(100));
+      return _rounding(amount.mul(30).div(3000));
     }
     require(true, 'illegal mealType');
   }
