@@ -11,7 +11,7 @@ const cacptoken = require('../build/contracts/CACPToken.json')
 contract("FortunebaoTest", (accounts) => {
     let catchRevert = require("./utils/exceptions.js").catchRevert;
 
-    let [alice, bob] = accounts; // 获取两个地址
+    let [alice, bob, burning] = accounts; // 获取两个地址 + 销毁地址
 
     function toWei(number_str) {
       return number_str + '000000000000000000'
@@ -55,8 +55,7 @@ contract("FortunebaoTest", (accounts) => {
         CNY_PRICE = 5000;
         tokenContract = await CacToken.new();
         //cacusdtPriceOracleTokenContract = await CacusdtPriceOracle.new();
-        burning_address = "0x0da5e8c87e1c6028fCdDF844B2D9B70E096550C0";
-        contractInstance = await Fortunebao.new(tokenContract.address, burning_address);
+        contractInstance = await Fortunebao.new(tokenContract.address, burning);
         bonusToken = new web3.eth.Contract(cactoken['abi'], await contractInstance.getBonusToken())
         purchaseAToken = new web3.eth.Contract(cacpatoken['abi'], await contractInstance.getPurchaseToken(0))
         purchaseBToken = new web3.eth.Contract(cacpbtoken['abi'], await contractInstance.getPurchaseToken(1))
