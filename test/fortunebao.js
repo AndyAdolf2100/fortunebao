@@ -1,12 +1,10 @@
 const CacToken = artifacts.require("CacToken"); // Cac合约
-const CacusdtPriceOracle = artifacts.require("CacusdtPriceOracle");
 const Fortunebao = artifacts.require("Fortunebao");
 const cactoken = require('../build/contracts/CacToken.json')
 const cacpatoken = require('../build/contracts/CACPAToken.json')
 const cacpbtoken = require('../build/contracts/CACPBToken.json')
 const cacpctoken = require('../build/contracts/CACPCToken.json')
 const cacptoken = require('../build/contracts/CACPToken.json')
-//const cacusdtPriceOracle = require('../build/contracts/CacusdtPriceOracle.json')
 
 contract("FortunebaoTest", (accounts) => {
     let catchRevert = require("./utils/exceptions.js").catchRevert;
@@ -54,7 +52,6 @@ contract("FortunebaoTest", (accounts) => {
         TOTAL = 20000000 // 全部奖励
         CNY_PRICE = 5000;
         tokenContract = await CacToken.new();
-        //cacusdtPriceOracleTokenContract = await CacusdtPriceOracle.new();
         contractInstance = await Fortunebao.new(tokenContract.address, burning);
         bonusToken = new web3.eth.Contract(cactoken['abi'], await contractInstance.getBonusToken())
         purchaseAToken = new web3.eth.Contract(cacpatoken['abi'], await contractInstance.getPurchaseToken(0))
