@@ -8,6 +8,7 @@ import "./CACPCToken.sol";
 import "./CACPToken.sol";
 import "./Owner.sol";
 import "./FortunbaoConfig.sol";
+import "./Utils.sol";
 /*
 iaT: activityType illegal
 imT: mealType illegal
@@ -196,7 +197,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
       msg.sender,        // 操作人
       interest,          // 操作数量
       block.timestamp,   // 当前时间
-      string(abi.encodePacked("interest:", uint2str(uint(interest)), "|newWithdrawedInterest:", uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
+      string(abi.encodePacked("interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
       OperationType.WITHDRAW_INTEREST, // 操作类型: 只提取利息
       d // 记录引用
     );
@@ -224,7 +225,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
         msg.sender,        // 操作人
         interest,          // 利息 + 本金
         block.timestamp,   // 当前时间
-        string(abi.encodePacked("depositAmount:", uint2str(uint(d.depositAmount)), "interest:", uint2str(uint(interest)), "|newWithdrawedInterest:", uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
+        string(abi.encodePacked("depositAmount:", Utils.uint2str(uint(d.depositAmount)), "interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
         OperationType.WITHDRAW_PRINCIPAL, // 操作类型: 提取本金
         d // 记录引用
       );
@@ -238,7 +239,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
         msg.sender,        // 操作人
         0,                 // 操作数量
         block.timestamp,   // 当前时间
-        string(abi.encodePacked("depositAmount:", uint2str(uint(d.depositAmount)), "interest:", uint2str(uint(interest)), "|newWithdrawedInterest:", uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
+        string(abi.encodePacked("depositAmount:", Utils.uint2str(uint(d.depositAmount)), "interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
         OperationType.WITHDRAW_PUBLISHMENT, // 操作类型: 提取接收惩罚
         d // 记录引用
       );
@@ -324,7 +325,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
 
     // 允许合约对此用户token余额进行操作
     uint256 allowance = token.allowance(msg.sender, address(this));
-    require(allowance >= depositAmount, string(abi.encodePacked("Check the token allowance: ", uint2str(allowance), ' depositAmount: ', uint2str(depositAmount))));
+    require(allowance >= depositAmount, string(abi.encodePacked("Check the token allowance: ", Utils.uint2str(allowance), ' depositAmount: ', Utils.uint2str(depositAmount))));
 
     uint newDepositId = totalDeposits.length.add(1);
 
@@ -353,7 +354,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
       msg.sender,                // 操作人
       newDeposit.depositAmount,  // 操作数量
       block.timestamp,           // 当前时间
-      string(abi.encodePacked("activityType:", uint2str(uint(tempDeposit.activityType)), '|mealType:', uint2str(uint(tempDeposit.mealType)))), // 备注
+      string(abi.encodePacked("activityType:", Utils.uint2str(uint(tempDeposit.activityType)), '|mealType:', Utils.uint2str(uint(tempDeposit.mealType)))), // 备注
       OperationType.DEPOSIT, // 操作类型
       tempDeposit            // 记录引用
     );

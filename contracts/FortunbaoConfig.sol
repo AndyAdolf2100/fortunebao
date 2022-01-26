@@ -58,29 +58,6 @@ contract FortunbaoConfig {
     require(true, 'iaT');
   }
 
-  // uint转字符串
-  function uint2str(uint _i) internal pure returns (string memory _uintAsString) {
-        if (_i == 0) {
-            return "0";
-        }
-        uint j = _i;
-        uint len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint k = len;
-        while (_i != 0) {
-            k = k-1;
-            uint8 temp = (48 + uint8(_i - _i / 10 * 10));
-            bytes1 b1 = bytes1(temp);
-            bstr[k] = b1;
-            _i /= 10;
-        }
-        return string(bstr);
-  }
-
   // 转换成Wei为单位
   function _toWei(uint _number) internal view returns (uint) {
     return _number.mul(TO_WEI);
