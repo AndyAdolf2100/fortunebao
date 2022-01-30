@@ -127,14 +127,18 @@ contract Fortunebao is Owner, FortunbaoConfig{
       principal = d.depositAmount;
       transferAmount = interest;
     } else {
+      // 惩罚为利息2倍 最高上限为100%本金
       uint pAmount = interest.mul(2);
+      if (pAmount > d.depositAmount) {
+        pAmount = d.depositAmount;
+      }
       // 需要惩罚 惩罚的本金数量是利息的2倍, 最少可扣除至0, 扣除的cac转移到销毁地址
       Configuration.Operation memory newOperation = Configuration.Operation(
         uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, oLength))), // UUID
         msg.sender,        // 操作人
         pAmount,           // 惩罚数量
         block.timestamp,   // 当前时间
-        string(abi.encodePacked("depositAmount:", Utils.uint2str(uint(d.depositAmount)), "|interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest.add(interest))), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest)))), // 备注
+        string(abi.encodePacked("depositAmount:", Utils.uint2str(uint(d.depositAmount)), "|interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest)))), // 备注
         Configuration.OperationType.WITHDRAW_PUBLISHMENT, // 操作类型: 提取接收惩罚
         d.id
       );
@@ -142,11 +146,8 @@ contract Fortunebao is Owner, FortunbaoConfig{
       data.pushAllOperations(newOperation);
       // 转移地址变成销毁地址
       transferTarget = data.getBurningAddress();
-      // 惩罚为利息2倍
       // 还剩余本金的情况下有转账
-      if (d.depositAmount > pAmount) {
-        principal = d.depositAmount.sub(pAmount);
-      }
+      principal = d.depositAmount.sub(pAmount);
       transferAmount = pAmount;
     }
     if (transferAmount > 0) {
