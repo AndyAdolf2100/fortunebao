@@ -46,6 +46,7 @@ contract FortunebaoData is Owner, FortunbaoConfig{
 
   // 质押、提取本金和利息、提取利息
   Configuration.Deposit[] public totalDeposits; // 全部的充值信息(公开)
+  mapping (uint => Configuration.Deposit) public totalDepositMappings; // ID快速查找Deposit(公开)
   Configuration.Operation[] public allOperations; //  用户操作(公开)
   mapping (address => bool) userJoined; // 判断用户是否参与了活动
   mapping (address => Configuration.Deposit[]) public userDeposits; //  用户所有的储蓄记录
@@ -90,6 +91,10 @@ contract FortunebaoData is Owner, FortunbaoConfig{
       return thirdWhiteList[addr];
     }
     require(true, 'iaT');
+  }
+
+  function getTotalDepositMapping(uint depositId) public view returns (Configuration.Deposit memory){
+    return totalDepositMappings[depositId];
   }
 
   // 设置白名单可购买量
@@ -161,6 +166,8 @@ contract FortunebaoData is Owner, FortunbaoConfig{
 
     // 记录用户强引用数组
     _pushUserDeposits(d.user);
+    // 制作所有deposit的索引
+    _autoSetTotalDepositMapping(d.user);
   }
 
   // push new Operation
@@ -209,6 +216,13 @@ contract FortunebaoData is Owner, FortunbaoConfig{
     Configuration.Deposit storage tempDeposit = totalDeposits[totalDeposits.length - 1];
     require(addr == tempDeposit.user, 'user deposit addr error');
     userDeposits[addr].push(tempDeposit);
+  }
+
+  function _autoSetTotalDepositMapping(address addr) private {
+    Configuration.Deposit storage tempDeposit = totalDeposits[totalDeposits.length - 1];
+    require(addr == tempDeposit.user, 'user deposit addr error');
+    require(totalDepositMappings[tempDeposit.id].id == 0, 'deposit id has been declared');
+    totalDepositMappings[tempDeposit.id] = tempDeposit;
   }
 
 

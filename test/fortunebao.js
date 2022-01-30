@@ -63,6 +63,7 @@ contract("FortunebaoTest", (accounts) => {
         purchaseBToken = new web3.eth.Contract(cacpbtoken['abi'], await dataContractInstance.getPurchaseToken(1))
         purchaseCToken = new web3.eth.Contract(cacpctoken['abi'], await dataContractInstance.getPurchaseToken(2))
         purchaseNormalToken = new web3.eth.Contract(cacptoken['abi'], await dataContractInstance.getPurchaseToken(3))
+        await bonusToken.methods.approve(contractInstance.address, toWei('20000000')).send({from: alice})
         await purchaseAToken.methods.approve(contractInstance.address, toWei('20000000')).send({from: alice})
         await purchaseBToken.methods.approve(contractInstance.address, toWei('20000000')).send({from: alice})
         await purchaseCToken.methods.approve(contractInstance.address, toWei('20000000')).send({from: alice})
@@ -70,13 +71,19 @@ contract("FortunebaoTest", (accounts) => {
 
         // 允许操作合约
         await dataContractInstance.allowAccess(contractInstance.address, {from: alice});
+        // 向Fortunebao合约中转账
+        await bonusToken.methods.transfer(contractInstance.address, toWei('10000000')).send({ from: alice });
     });
 
     it("初始余额确认: ", async () => {
-      // 发行人CAC余额2000万
+      // 发行人CAC余额2000万 转进合约2000
       let alice_cac_balance = await bonusToken.methods.balanceOf(alice).call()
       console.log('alice_cac_balance', alice_cac_balance)
-      //assert.equal(web3.utils.fromWei(alice_cac_balance), TOTAL)
+      assert.equal(web3.utils.fromWei(alice_cac_balance), TOTAL / 2)
+
+      let contract_cac_balance = await bonusToken.methods.balanceOf(contractInstance.address).call()
+      console.log('contract_cac_balance = ', contract_cac_balance)
+      assert.equal(web3.utils.fromWei(contract_cac_balance), TOTAL / 2)
 
       // 发行人CACPA余额2000万
       let alice_cacpa_balance = await purchaseAToken.methods.balanceOf(alice).call()
@@ -297,13 +304,13 @@ contract("FortunebaoTest", (accounts) => {
       await purchase_in_white_list(2, 1) // 白名单质押 第三轮-第二个套餐 第二个套餐最多能拿60天
       my_deposits = await dataContractInstance.getTotalDeposits()
       last_deposit = my_deposits[my_deposits.length - 1]
-      console.log('3 last_deposit = ', last_deposit)
+      console.log('4 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 25)
-      console.log('3 interestInfo = ', interestInfo)
+      console.log('4 interestInfo = ', interestInfo)
       assert.equal(interestInfo.interest, '176800000000000000000') // 1000 * 17 / 3000 * 24 * 1.3 = 176.8
       await contractInstance.withdrawOnlyInterest(last_deposit.id, currentTime() + 86400 * 25)
-      lastOperation = allOperations.last
-      console.info('lastOperation = ', lastOperation)
+      lastOperation = allOperations[allOperations.length - 1]
+      console.info('4 lastOperation = ', lastOperation)
       assert.equal(lastOperation.operationType, 2) // 操作类型,选定提取利息2
       assert.equal(lastOperation.user, alice) // 记录参与活动地址
       assert.equal(web3.utils.fromWei(lastOperation.amount), 176.8) // 利息数量

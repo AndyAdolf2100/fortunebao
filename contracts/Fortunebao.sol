@@ -40,31 +40,27 @@ contract Fortunebao is Owner, FortunbaoConfig{
     if (nowTime == 0) {
       nowTime = block.timestamp;
     }
-    for (uint i = 0; i < data.getUserDeposits(msg.sender).length; i ++) {
-      if (data.getUserDeposits(msg.sender)[i].id == depositId) {
-        Configuration.Deposit memory tempDeposit = data.getUserDeposits(msg.sender)[i];
-        uint totalDepositDays = 0;
-        // 质押时间: 天数
-        if (nowTime > tempDeposit.calcInterestDate) {
-          totalDepositDays = ((nowTime.sub(tempDeposit.calcInterestDate)).div(1 days));
-        }
-        // 套餐收益最大天数
-        uint maxBonusDays = Configuration._getMaxBonusDays(tempDeposit.mealType);
-        // 可获得收益的天数
-        uint bonusDays = totalDepositDays > maxBonusDays ? maxBonusDays : totalDepositDays; // 获取收益天数最大为套餐天数
-        // 计算利息(活动倍数 + 不同套餐费率)
-        uint interest = 0;
-        if (bonusDays > 0) {
-          interest = Configuration._getInterestIncreaseRate(tempDeposit.activityType, Configuration._makeInterestRate(tempDeposit.mealType, tempDeposit.depositAmount.mul(bonusDays)));
-        }
-        Configuration.InterestInfo memory info = Configuration.InterestInfo(
-          tempDeposit,
-          interest - tempDeposit.withdrawedInterest, // 应得利息减少已经提取的利息
-          totalDepositDays >= maxBonusDays // 质押天数是否大于所需天数
-        );
-        return info;
-      }
+    Configuration.Deposit memory tempDeposit = data.getTotalDepositMapping(depositId);
+    uint totalDepositDays = 0;
+    // 质押时间: 天数
+    if (nowTime > tempDeposit.calcInterestDate) {
+      totalDepositDays = ((nowTime.sub(tempDeposit.calcInterestDate)).div(1 days));
     }
+    // 套餐收益最大天数
+    uint maxBonusDays = Configuration._getMaxBonusDays(tempDeposit.mealType);
+    // 可获得收益的天数
+    uint bonusDays = totalDepositDays > maxBonusDays ? maxBonusDays : totalDepositDays; // 获取收益天数最大为套餐天数
+    // 计算利息(活动倍数 + 不同套餐费率)
+    uint interest = 0;
+    if (bonusDays > 0) {
+      interest = Configuration._getInterestIncreaseRate(tempDeposit.activityType, Configuration._makeInterestRate(tempDeposit.mealType, tempDeposit.depositAmount.mul(bonusDays)));
+    }
+    Configuration.InterestInfo memory info = Configuration.InterestInfo(
+      tempDeposit,
+      interest - tempDeposit.withdrawedInterest, // 应得利息减少已经提取的利息
+      totalDepositDays >= maxBonusDays // 质押天数是否大于所需天数
+    );
+    return info;
   }
 
   // 仅提取利息
@@ -77,6 +73,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     Configuration.Deposit memory d = info.deposit; // 得到操作的Deposit
     require(interest > 0, 'interest is zero');
 
+    //TOFIXED
     d.withdrawedInterest = d.withdrawedInterest.add(interest); // 记录应提取的withdrawedInterest
 
     uint oLength = data.getAllOperations().length;
