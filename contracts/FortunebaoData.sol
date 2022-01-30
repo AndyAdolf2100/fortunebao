@@ -77,6 +77,7 @@ contract FortunebaoData is Owner, FortunbaoConfig{
     normalToken = new CACPToken(msg.sender, miningPoolAmount);     // 发行CACP合约
     priceLooper = msg.sender;
     accessAllowed[msg.sender] = true;
+    burningAddress = _burningAddress;
   }
 
   // 获取白名单可购买量
@@ -192,6 +193,18 @@ contract FortunebaoData is Owner, FortunbaoConfig{
 
   function getBurningAddress() public view returns(address){
     return burningAddress;
+  }
+
+  // 增长Deposit已收入利息
+  function increaseDepositWithdrawedInterest(uint depositId, uint interest) public platform{
+    Configuration.Deposit storage d =  totalDepositMappings[depositId];
+    d.withdrawedInterest = d.withdrawedInterest.add(interest);
+  }
+
+  // 设置Deposit已提取
+  function setDepositWithdrawed(uint depositId) public platform{
+    Configuration.Deposit storage d =  totalDepositMappings[depositId];
+    d.isWithdrawed = true;
   }
 
   modifier isPriceLooper() {

@@ -41,6 +41,7 @@ library Configuration{
     uint createdDate;             // 操作时间
     string comment;               // 备注
     OperationType operationType;  // 操作类型
+    uint depositId;               // DepositId
   }
 
   // 返回的信息

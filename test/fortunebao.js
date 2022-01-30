@@ -71,8 +71,10 @@ contract("FortunebaoTest", (accounts) => {
 
         // 允许操作合约
         await dataContractInstance.allowAccess(contractInstance.address, {from: alice});
-        // 向Fortunebao合约中转账
+        // 向Fortunebao合约中转账cac
         await bonusToken.methods.transfer(contractInstance.address, toWei('10000000')).send({ from: alice });
+        // 向Fortunebao合约中转账cacp
+        await purchaseNormalToken.methods.transfer(contractInstance.address, toWei('10000000')).send({ from: alice });
     });
 
     it("初始余额确认: ", async () => {
@@ -101,7 +103,7 @@ contract("FortunebaoTest", (accounts) => {
       // 合约CACP余额1000万
       let alice_cacp_balance = await purchaseNormalToken.methods.balanceOf(alice).call()
       assert.equal(web3.utils.fromWei(alice_cacp_balance), TOTAL/2)
-      let contract_cacp_balance = await purchaseNormalToken.methods.balanceOf(dataContractInstance.address).call()
+      let contract_cacp_balance = await purchaseNormalToken.methods.balanceOf(contractInstance.address).call()
       assert.equal(web3.utils.fromWei(contract_cacp_balance), TOTAL/2)
 
     })
@@ -290,7 +292,7 @@ contract("FortunebaoTest", (accounts) => {
       console.log('3 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 101)
       console.log('3 interestInfo = ', interestInfo)
-      assert.equal(interestinfo.interest, towei(442)) // 1000 * 17 / 3000 * 60 * 1.3 = 442
+      assert.equal(interestInfo.interest, toWei(442)) // 1000 * 17 / 3000 * 60 * 1.3 = 442
     })
 
     it("本金百分百之后减产的逻辑需要搞一搞", async () => {
@@ -299,7 +301,6 @@ contract("FortunebaoTest", (accounts) => {
 
 
     it("在第三轮-第二个套餐17%月化上，25天后仅提取利息, (当前时间 + 25 days)，能得到24天的利息", async () => {
-      // ganache-cli --time 2022-02-15T15:53:00+00:00 -l 0x10378ea0
       await contractInstance.addWhiteList(2, toWei(1000), alice)
       await purchase_in_white_list(2, 1) // 白名单质押 第三轮-第二个套餐 第二个套餐最多能拿60天
       my_deposits = await dataContractInstance.getTotalDeposits()
@@ -314,7 +315,7 @@ contract("FortunebaoTest", (accounts) => {
       console.info('4 lastOperation = ', lastOperation)
       assert.equal(lastOperation.operationType, 2) // 操作类型,选定提取利息2
       assert.equal(lastOperation.user, alice) // 记录参与活动地址
-      assert.equal(web3.utils.fromWei(lastOperation.amount), 176.8) // 利息数量  1000 * 17 / 3000 * 25 * 1.3 = 442
+      assert.equal(web3.utils.fromWei(lastOperation.amount), 176.8) // 利息数量  1000.0 * 17 / 3000 * 24 * 1.3 = 176.8
 
       userLastDeposits = await dataContractInstance.getUserDeposits(alice)
       console.info('userLastDeposits = ', userLastDeposits)
@@ -323,15 +324,43 @@ contract("FortunebaoTest", (accounts) => {
 
       // alice的cac余额
       let alice_cac_balance = await bonusToken.methods.balanceOf(alice).call()
-      assert.equal(web3.utils.fromWei(alice_gb_balance), 176.8) // 指向deposit正确
-
+      assert.equal(web3.utils.fromWei(alice_cac_balance), '10000176.8')
     })
 
-    xit("正常提现 CACP提取余额查看, CAC利息提取余额查看", async () => {
-       await purchase(1000, 1, 1) // 购买一次
+    it("在第三轮-第二个套餐17%月化上，25天后仅提取本金，接收惩罚, (当前时间 + 25 days)，本金惩罚 24 * 2 = 48天的利息", async () => {
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 1) // 白名单质押 第三轮-第二个套餐 第二个套餐最多能拿60天
+      my_deposits = await dataContractInstance.getTotalDeposits()
+      last_deposit = my_deposits[my_deposits.length - 1]
+      console.log('4 last_deposit = ', last_deposit)
+      let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 25)
+      console.log('4 interestInfo = ', interestInfo)
+      assert.equal(interestInfo.interest, '176800000000000000000') // 1000 * 17 / 3000 * 24 * 1.3 = 176.8
+      await contractInstance.withdrawPrincipal(last_deposit.id, currentTime() + 86400 * 25)
+      let allOperations = await dataContractInstance.getAllOperations()
+      lastOperation = allOperations[allOperations.length - 1]
+      console.info('4 lastOperation = ', lastOperation)
+      assert.equal(lastOperation.operationType, 3) // 操作类型,选定提取惩罚3
+      assert.equal(lastOperation.user, alice) // 记录参与活动地址
+      assert.equal(web3.utils.fromWei(lastOperation.amount), 176.8 * 2) // 利息数量  1000 * 17 / 3000 * 25 * 1.3 = 442
+
+      userLastDeposits = await dataContractInstance.getUserDeposits(alice)
+      assert.equal(lastOperation.depositId, last_deposit.id) // 指向deposit正确
+
+      // alice的cac余额不变
+      let alice_cac_balance = await bonusToken.methods.balanceOf(alice).call()
+      assert.equal(web3.utils.fromWei(alice_cac_balance), '10000000')
+
+      // 销毁地址放入销毁量 cac
+      let burning_cac_balance = await bonusToken.methods.balanceOf(burning).call()
+      assert.equal(web3.utils.fromWei(burning_cac_balance), 176.8 * 2)
+
+      // 本金损毁
+      let alice_cacp_balance = await purchaseNormalToken.methods.balanceOf(alice).call()
+      assert.equal(web3.utils.fromWei(alice_cacp_balance), 10000646.4) // 10000000 + 1000 - 176.8 * 2 = 10000646.4
     })
 
-    xit("正常只提取利息 CAC利息提取余额查看", async () => {
+    it("在第三轮-第五个套餐30%月化上，360天后仅提取本金，接收惩罚, (当前时间 + 360 days)，惩罚掉全部本金", async () => {
        await purchase(1000, 1, 1) // 购买一次
     })
 

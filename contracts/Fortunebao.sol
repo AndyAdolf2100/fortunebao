@@ -58,7 +58,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     Configuration.InterestInfo memory info = Configuration.InterestInfo(
       tempDeposit,
       interest - tempDeposit.withdrawedInterest, // 应得利息减少已经提取的利息
-      totalDepositDays >= maxBonusDays // 质押天数是否大于所需天数
+      totalDepositDays < maxBonusDays // 质押天数是否大于所需天数 套餐所需天数
     );
     return info;
   }
@@ -73,8 +73,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     Configuration.Deposit memory d = info.deposit; // 得到操作的Deposit
     require(interest > 0, 'interest is zero');
 
-    //TOFIXED
-    d.withdrawedInterest = d.withdrawedInterest.add(interest); // 记录应提取的withdrawedInterest
+    data.increaseDepositWithdrawedInterest(d.id, interest);
 
     uint oLength = data.getAllOperations().length;
     Configuration.Operation memory newOperation = Configuration.Operation(
@@ -82,11 +81,16 @@ contract Fortunebao is Owner, FortunbaoConfig{
       msg.sender,        // 操作人
       interest,          // 操作数量
       block.timestamp,   // 当前时间
-      string(abi.encodePacked("interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
-      Configuration.OperationType.WITHDRAW_INTEREST // 操作类型: 只提取利息
+      string(abi.encodePacked("interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest.add(interest))), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest)))), // 备注
+      Configuration.OperationType.WITHDRAW_INTEREST, // 操作类型: 只提取利息
+      d.id
     );
+
     // 记录操作
     data.pushAllOperations(newOperation);
+
+    // require(false, string(abi.encodePacked("oLength:", Utils.uint2str(oLength))));
+
     data.getBonusToken().transfer(msg.sender, interest); // 利息转出
     emit WithdrawInterestSuccessEvent();
   }
@@ -100,11 +104,12 @@ contract Fortunebao is Owner, FortunbaoConfig{
     uint interest = info.interest;    // 得到利息
     Configuration.Deposit memory d = info.deposit; // 得到操作的Deposit
     bool needPublishment = info.needDepositPunishment; // 是否需要得到惩罚
-    address transferTarget = msg.sender;
+    address transferTarget = msg.sender; // 转移目标地址(黑洞/用户账户)
+    uint transferAmount = 0; // 黑洞燃烧/利息提取
     uint principal = 0;
 
-    d.withdrawedInterest = d.withdrawedInterest.add(interest); // 记录应提取的withdrawedInterest
-    d.isWithdrawed = true; // 标记deposit已经提取本金
+    data.increaseDepositWithdrawedInterest(d.id, interest);
+    data.setDepositWithdrawed(d.id);
 
     uint oLength = data.getAllOperations().length;
     if (!needPublishment || interest == 0) {
@@ -113,35 +118,39 @@ contract Fortunebao is Owner, FortunbaoConfig{
         msg.sender,        // 操作人
         interest,          // 利息 + 本金
         block.timestamp,   // 当前时间
-        string(abi.encodePacked("depositAmount:", Utils.uint2str(uint(d.depositAmount)), "interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
-        Configuration.OperationType.WITHDRAW_PRINCIPAL // 操作类型: 提取本金
+        string(abi.encodePacked("depositAmount:", Utils.uint2str(uint(d.depositAmount)), "|interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest.add(interest))), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest)))), // 备注
+        Configuration.OperationType.WITHDRAW_PRINCIPAL, // 操作类型: 提取本金
+        d.id
       );
       // 记录操作
       data.pushAllOperations(newOperation);
       principal = d.depositAmount;
+      transferAmount = interest;
     } else {
+      uint pAmount = interest.mul(2);
       // 需要惩罚 惩罚的本金数量是利息的2倍, 最少可扣除至0, 扣除的cac转移到销毁地址
       Configuration.Operation memory newOperation = Configuration.Operation(
         uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, oLength))), // UUID
         msg.sender,        // 操作人
-        0,                 // 操作数量
+        pAmount,           // 惩罚数量
         block.timestamp,   // 当前时间
-        string(abi.encodePacked("depositAmount:", Utils.uint2str(uint(d.depositAmount)), "interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest)), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest.sub(interest))))), // 备注
-        Configuration.OperationType.WITHDRAW_PUBLISHMENT // 操作类型: 提取接收惩罚
+        string(abi.encodePacked("depositAmount:", Utils.uint2str(uint(d.depositAmount)), "|interest:", Utils.uint2str(uint(interest)), "|newWithdrawedInterest:", Utils.uint2str(uint(d.withdrawedInterest.add(interest))), '|oldWithdrawedInterest:', Utils.uint2str(uint(d.withdrawedInterest)))), // 备注
+        Configuration.OperationType.WITHDRAW_PUBLISHMENT, // 操作类型: 提取接收惩罚
+        d.id
       );
       // 记录操作
       data.pushAllOperations(newOperation);
       // 转移地址变成销毁地址
       transferTarget = data.getBurningAddress();
       // 惩罚为利息2倍
-      uint pAmount = interest.mul(2);
       // 还剩余本金的情况下有转账
       if (d.depositAmount > pAmount) {
         principal = d.depositAmount.sub(pAmount);
       }
+      transferAmount = pAmount;
     }
-    if (interest > 0) {
-      data.getBonusToken().transfer(transferTarget, interest); // 利息转出
+    if (transferAmount > 0) {
+      data.getBonusToken().transfer(transferTarget, transferAmount); // 利息转出
     }
     if (principal > 0) {
       // normalToken
@@ -200,13 +209,14 @@ contract Fortunebao is Owner, FortunbaoConfig{
 
     uint newDepositId = data.getTotalDeposits().length.add(1);
 
+    uint currentTime = block.timestamp;
     Configuration.Deposit memory newDeposit = Configuration.Deposit(
       newDepositId,              // ID
       msg.sender,                // 储蓄人
       depositAmount,             // 质押数量
       data.getCacPrice(),        // 质押的价格
-      block.timestamp,           // 当前时间
-      block.timestamp - ((block.timestamp + 8 hours) % 86400) + 1 days, // 计息时间次日00:00 +0800
+      currentTime,               // 当前时间
+      currentTime - ((currentTime + 8 hours) % 86400) + 1 days, // 计息时间次日00:00 +0800
       0,                 // 已提取的本金初始值
       false,             // 是否已经提取本金
       activityType,      // 活动类型(一, 二, 三轮, 常态)
@@ -222,7 +232,8 @@ contract Fortunebao is Owner, FortunbaoConfig{
       newDeposit.depositAmount,  // 操作数量
       block.timestamp,           // 当前时间
       string(abi.encodePacked("activityType:", Utils.uint2str(uint(newDeposit.activityType)), '|mealType:', Utils.uint2str(uint(newDeposit.mealType)))), // 备注
-      Configuration.OperationType.DEPOSIT // 操作类型
+      Configuration.OperationType.DEPOSIT, // 操作类型
+      newDeposit.id
     );
     // 记录操作
     data.pushAllOperations(newOperation);
