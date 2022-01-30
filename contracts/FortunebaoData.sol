@@ -53,7 +53,7 @@ contract FortunebaoData is Owner, FortunbaoConfig{
   // 三轮白名单mapping以及地址列表
   mapping (address => uint) private firstWhiteList;
   address[] public firstAddresses;
-  // 判断是否参与过此轮
+  // 判断是否参与过此轮活动
   mapping (address => bool) private firstJoined;
 
   mapping (address => uint) private secondWhiteList;
@@ -68,6 +68,7 @@ contract FortunebaoData is Owner, FortunbaoConfig{
 
   constructor(address _bonusTokenAddress, address _burningAddress) public {
     // 质押TOKEN发布
+    bonusToken = ERC20(_bonusTokenAddress);                        // CAC合约
     uint miningPoolAmount = _toWei(20000000);                      // 发行量2000万
     firstToken = new CACPAToken(msg.sender, miningPoolAmount);     // 发行CACPA合约
     secondToken = new CACPBToken(msg.sender, miningPoolAmount);    // 发行CACPB合约
@@ -122,7 +123,7 @@ contract FortunebaoData is Owner, FortunbaoConfig{
     require(true, 'iaT');
   }
 
-  function getTotalDeposit() public view returns(Configuration.Deposit[] memory) {
+  function getTotalDeposits() public view returns(Configuration.Deposit[] memory) {
     return totalDeposits;
   }
 
@@ -154,13 +155,12 @@ contract FortunebaoData is Owner, FortunbaoConfig{
     return userDeposits[addr];
   }
 
-  function pushUserDeposits(address addr, Configuration.Deposit memory d) public platform {
-    userDeposits[addr].push(d);
-  }
-
   // push new Deposit
   function pushTotalDeposits(Configuration.Deposit memory d) public platform {
     totalDeposits.push(d);
+
+    // 记录用户强引用数组
+    _pushUserDeposits(d.user);
   }
 
   // push new Operation
@@ -204,5 +204,12 @@ contract FortunebaoData is Owner, FortunbaoConfig{
   function denyAccess(address _addr) platform public {
     accessAllowed[_addr] = false;
   }
+
+  function _pushUserDeposits(address addr) private {
+    Configuration.Deposit storage tempDeposit = totalDeposits[totalDeposits.length - 1];
+    require(addr == tempDeposit.user, 'user deposit addr error');
+    userDeposits[addr].push(tempDeposit);
+  }
+
 
 }

@@ -9,6 +9,8 @@ import "./CACPToken.sol";
 import "./Owner.sol";
 import "./FortunbaoConfig.sol";
 import "./FortunebaoData.sol";
+import "./Configuration.sol";
+import "./Utils.sol";
 /*
 错误信息:
 iaT: activityType illegal
@@ -158,7 +160,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
   // 3. 只要活动类型以及套餐类型可以选择
   function depositInWhiteList(Configuration.ActivityType activityType, Configuration.MealType mealType) public noReentrancy {
     uint depositAmount = data.getWhiteAddressAmount(msg.sender, activityType);
-    data.setWhiteAddressAmount(msg.sender, 0, activityType);
+    data.setWhiteAddressAmount(msg.sender, 0, activityType); // 将可申购量去除
     IERC20 token = data.getPurchaseToken(activityType);
     require(token.balanceOf(msg.sender) >= depositAmount, "Balance not enough");
     require(depositAmount > 0, 'You are not in whiteList');
@@ -199,7 +201,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     uint256 allowance = token.allowance(msg.sender, address(this));
     require(allowance >= depositAmount, string(abi.encodePacked("Check the token allowance: ", Utils.uint2str(allowance), ' depositAmount: ', Utils.uint2str(depositAmount))));
 
-    uint newDepositId = data.getTotalDeposit().length.add(1);
+    uint newDepositId = data.getTotalDeposits().length.add(1);
 
     Configuration.Deposit memory newDeposit = Configuration.Deposit(
       newDepositId,              // ID
@@ -217,16 +219,12 @@ contract Fortunebao is Owner, FortunbaoConfig{
     // 记录质押
     data.pushTotalDeposits(newDeposit);
 
-    // 获取引用
-    Configuration.Deposit memory tempDeposit = data.getTotalDeposit()[data.getTotalDeposit().length - 1];
-    data.pushUserDeposits(msg.sender, tempDeposit);
-
     Configuration.Operation memory newOperation = Configuration.Operation(
       uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, data.getAllOperations().length))), // UUID
       msg.sender,                // 操作人
       newDeposit.depositAmount,  // 操作数量
       block.timestamp,           // 当前时间
-      string(abi.encodePacked("activityType:", Utils.uint2str(uint(tempDeposit.activityType)), '|mealType:', Utils.uint2str(uint(tempDeposit.mealType)))), // 备注
+      string(abi.encodePacked("activityType:", Utils.uint2str(uint(newDeposit.activityType)), '|mealType:', Utils.uint2str(uint(newDeposit.mealType)))), // 备注
       Configuration.OperationType.DEPOSIT // 操作类型
     );
     // 记录操作
