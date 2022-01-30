@@ -99,9 +99,9 @@ contract("FortunebaoTest", (accounts) => {
 
     })
 
-    xit(`
+    it(`
       进行1次白名单质押:
-      没有在白名单里面,质押失败
+      没有在白名单里面,质押失败: You are not in whiteList
     `, async () => {
       try {
         await purchase_in_white_list(0, 0) // 购买一次
@@ -172,7 +172,7 @@ contract("FortunebaoTest", (accounts) => {
     //
     // 需要追加一个合约capc的提取以及充值 isOwner
 
-    xit(`进行普通质押:
+    it(`进行普通质押:
         校验Deposit
           类型,
           质押数量,
@@ -187,7 +187,7 @@ contract("FortunebaoTest", (accounts) => {
        cny_amount = 1000
        purchase_amount = toWei(cny_amount)
        await purchase(purchase_amount, 1, 1) // 购买一次
-       totalDeposits = await contractInstance.getTotalDeposits()
+       totalDeposits = await dataContractInstance.getTotalDeposits()
        lastDeposit = totalDeposits[totalDeposits.length - 1]
        console.info('normal lastDeposit = ', lastDeposit)
        assert.equal(lastDeposit.isWithdrawed, false)
@@ -198,22 +198,26 @@ contract("FortunebaoTest", (accounts) => {
        assert.equal(lastDeposit.user, alice) // 记录参与活动地址
        assert.equal(web3.utils.fromWei(lastDeposit.depositAmount), cny_amount) // 质押金额
 
-       allOperations = await contractInstance.getAllOperations()
+       allOperations = await dataContractInstance.getAllOperations()
        lastOperation = allOperations[allOperations.length - 1]
        console.info('normal lastOperation = ', lastOperation)
        assert.equal(lastOperation.operationType, 0) // 操作类型,选定充值0
        assert.equal(lastOperation.user, alice) // 记录参与活动地址
        assert.equal(web3.utils.fromWei(lastOperation.amount), cny_amount) // 质押金额1000
-       assert.equal(lastOperation.deposit.id, lastDeposit.id) // 指向deposit正确
+
+       userLastDeposits = await dataContractInstance.getUserDeposits(alice)
+       console.info('userLastDeposits = ', userLastDeposits)
+       lastUserDeposit = userLastDeposits[userLastDeposits.length - 1]
+       assert.equal(lastUserDeposit.id, lastDeposit.id) // 指向deposit正确
 
        // cacp减少100
        let alice_cacp_balance = await purchaseNormalToken.methods.balanceOf(alice).call()
        assert.equal(web3.utils.fromWei(alice_cacp_balance), TOTAL/2 - cny_amount)
     })
 
-    xit(`普通质押余额不足质押判断 Balance not enough`, async () => {
+    it(`普通质押余额不足质押判断 Balance not enough`, async () => {
       // 购买时余额不足
-      try {
+       try {
         await contractInstance.depositNormally(toWei(1000), 1, {from: bob})
         assert.fail('Expected throw not received');
       } catch (error) {
@@ -221,7 +225,7 @@ contract("FortunebaoTest", (accounts) => {
       }
     })
 
-    xit(`1. 白名单余额不足质押判断 Balance not enough
+    it(`1. 白名单余额不足质押判断 Balance not enough
         2. 抛出异常白名单数量不变`, async () => {
       // 添加白名单
       try {
@@ -231,16 +235,16 @@ contract("FortunebaoTest", (accounts) => {
         assert.fail('Expected throw not received');
       } catch (error) {
         assert(error)
-        let valid_amount = await contractInstance.getWhiteAddressAmount(1, {from: bob})
+        let valid_amount = await dataContractInstance.getWhiteAddressAmount(bob, 1)
         console.info('valid_amount = ', valid_amount)
         assert.equal(valid_amount, toWei(100))
       }
     })
 
 
-    xit("判断不同时间的利息: 当天存入, 没有利息 ", async () => {
+    it("判断不同时间的利息: 当天存入, 没有利息 ", async () => {
       await purchase(toWei(1000), 0, 1) // 普通质押
-      my_deposits = await contractInstance.myDeposits()
+      my_deposits = await dataContractInstance.getTotalDeposits()
       last_deposit = my_deposits[my_deposits.length - 1]
       console.log('1 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, 0)
@@ -248,10 +252,10 @@ contract("FortunebaoTest", (accounts) => {
       assert.equal(interestInfo.interest, 0)
     })
 
-    xit("判断不同时间的利息: 次日利息 常态轮-第三个套餐20%月化 ", async () => {
+    it("判断不同时间的利息: 次日利息 常态轮-第三个套餐20%月化 ", async () => {
       // (20 / 3000) 每日利息
       await purchase(toWei(1000), 2, 1) // 普通质押 常态轮-第三个套餐
-      my_deposits = await contractInstance.myDeposits()
+      my_deposits = await dataContractInstance.getTotalDeposits()
       last_deposit = my_deposits[my_deposits.length - 1]
       console.log('2 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 2)
@@ -259,10 +263,10 @@ contract("FortunebaoTest", (accounts) => {
       assert.equal(interestInfo.interest, '6666700000000000000') // 6.6667
     })
 
-    xit("判断不同时间的利息: 次日利息 常态轮-第三个套餐20%月化 100天以后看有多少利息, 应该还有90天", async () => {
+    it("判断不同时间的利息: 次日利息 常态轮-第三个套餐20%月化 100天以后看有多少利息, 应该还有90天", async () => {
       // (20 / 3000) 每日利息
       await purchase(toWei(1000), 2, 1) // 普通质押 常态轮-第三个套餐 第三个套餐最多能拿90天
-      my_deposits = await contractInstance.myDeposits()
+      my_deposits = await dataContractInstance.getTotalDeposits()
       last_deposit = my_deposits[my_deposits.length - 1]
       console.log('2 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 101)
@@ -270,11 +274,11 @@ contract("FortunebaoTest", (accounts) => {
       assert.equal(interestInfo.interest, toWei(600)) // 1000 * 20 / 3000 * 90 = 600
     })
 
-    xit("判断不同时间的利息: 次日利息 第三轮-第二个套餐17%月化 100天以后看有多少利息, 应该还有60天", async () => {
+    it("判断不同时间的利息: 次日利息 第三轮-第二个套餐17%月化 100天以后看有多少利息, 应该还有60天", async () => {
       // (17 / 3000) 每日利息
       await contractInstance.addWhiteList(2, toWei(1000), alice)
       await purchase_in_white_list(2, 1) // 白名单质押 第三轮-第二个套餐 第二个套餐最多能拿60天
-      my_deposits = await contractInstance.myDeposits()
+      my_deposits = await dataContractInstance.getTotalDeposits()
       last_deposit = my_deposits[my_deposits.length - 1]
       console.log('3 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 101)
@@ -287,11 +291,11 @@ contract("FortunebaoTest", (accounts) => {
     })
 
 
-    xit("在第三轮-第二个套餐17%月化上，25天后仅提取利息, (当前时间 + 25 days)，能得到24天的利息", async () => {
+    it("在第三轮-第二个套餐17%月化上，25天后仅提取利息, (当前时间 + 25 days)，能得到24天的利息", async () => {
       // ganache-cli --time 2022-02-15T15:53:00+00:00 -l 0x10378ea0
       await contractInstance.addWhiteList(2, toWei(1000), alice)
       await purchase_in_white_list(2, 1) // 白名单质押 第三轮-第二个套餐 第二个套餐最多能拿60天
-      my_deposits = await contractInstance.myDeposits()
+      my_deposits = await dataContractInstance.getTotalDeposits()
       last_deposit = my_deposits[my_deposits.length - 1]
       console.log('3 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 25)
@@ -301,7 +305,7 @@ contract("FortunebaoTest", (accounts) => {
       lastOperation = allOperations.last
       console.info('lastOperation = ', lastOperation)
       assert.equal(lastOperation.operationType, 2) // 操作类型,选定提取利息2
-      ssert.equal(lastOperation.user, alice) // 记录参与活动地址
+      assert.equal(lastOperation.user, alice) // 记录参与活动地址
       assert.equal(web3.utils.fromWei(lastOperation.amount), 176.8) // 利息数量
       assert.equal(lastOperation.deposit.id, last_deposit.id) // 指向deposit正确
 
