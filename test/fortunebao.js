@@ -290,7 +290,7 @@ contract("FortunebaoTest", (accounts) => {
       console.log('3 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 101)
       console.log('3 interestInfo = ', interestInfo)
-      assert.equal(interestInfo.interest, toWei(442)) // 1000 * 17 / 3000 * 60 * 1.3 = 442
+      assert.equal(interestinfo.interest, towei(442)) // 1000 * 17 / 3000 * 60 * 1.3 = 442
     })
 
     it("本金百分百之后减产的逻辑需要搞一搞", async () => {
@@ -309,15 +309,21 @@ contract("FortunebaoTest", (accounts) => {
       console.log('4 interestInfo = ', interestInfo)
       assert.equal(interestInfo.interest, '176800000000000000000') // 1000 * 17 / 3000 * 24 * 1.3 = 176.8
       await contractInstance.withdrawOnlyInterest(last_deposit.id, currentTime() + 86400 * 25)
+      let allOperations = await dataContractInstance.getAllOperations()
       lastOperation = allOperations[allOperations.length - 1]
       console.info('4 lastOperation = ', lastOperation)
       assert.equal(lastOperation.operationType, 2) // 操作类型,选定提取利息2
       assert.equal(lastOperation.user, alice) // 记录参与活动地址
-      assert.equal(web3.utils.fromWei(lastOperation.amount), 176.8) // 利息数量
-      assert.equal(lastOperation.deposit.id, last_deposit.id) // 指向deposit正确
+      assert.equal(web3.utils.fromWei(lastOperation.amount), 176.8) // 利息数量  1000 * 17 / 3000 * 25 * 1.3 = 442
+
+      userLastDeposits = await dataContractInstance.getUserDeposits(alice)
+      console.info('userLastDeposits = ', userLastDeposits)
+      lastUserDeposit = userLastDeposits[userLastDeposits.length - 1]
+      assert.equal(lastUserDeposit.id, last_deposit.id) // 指向deposit正确
 
       // alice的cac余额
       let alice_cac_balance = await bonusToken.methods.balanceOf(alice).call()
+      assert.equal(web3.utils.fromWei(alice_gb_balance), 176.8) // 指向deposit正确
 
     })
 
@@ -354,6 +360,7 @@ contract("FortunebaoTest", (accounts) => {
       console.info('alice_gb_balance == ')
       console.info(alice_gb_balance)
       //assert.equal(web3.utils.fromWei(alice_gb_balance), 380 + PRE_MINING)
+      //
     })
 
     xit("获取价格", async () => {
