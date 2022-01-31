@@ -458,7 +458,7 @@ contract("FortunebaoTest", (accounts) => {
       await dataContractInstance.setPriceLooper(bob, {from: alice})
       await dataContractInstance.setCacPrice(toWei(3), {from: bob})
       let cacprice = await dataContractInstance.getCacPrice({from: bob})
-      at ssert.equal(web3.utils.fromWei(cacprice), 3)
+      assert.equal(web3.utils.fromWei(cacprice), 3)
     })
 
 
