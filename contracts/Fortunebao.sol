@@ -19,7 +19,13 @@ imT: mealType illegal
 contract Fortunebao is Owner, FortunbaoConfig{
   using SafeMath for uint;
 
+  uint private constant reductionBasicNumber = 1000;              // 减产基础数(测试时可以降低为1)
+
   FortunebaoData data; // 数据合约 所有常规不变数据从这里面取
+
+  uint public reductionCount = 0; // 减产次数(公开可见)
+  uint[] private reductionDateTimeArray; // 减产时间时间戳
+
   uint targetUSDTValue = _toWei(500); // 500等价U
 
   event DepositSuccessEvent();  // 成功质押
@@ -28,6 +34,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
 
   constructor(address _dataContract) public {
     data = FortunebaoData(_dataContract);
+    reductionDateTimeArray.push(block.timestamp); // 第一次时间记录为合约发布时间
   }
 
   function addWhiteList(Configuration.ActivityType activityType, uint amount, address addr) public isOwner {
@@ -53,8 +60,16 @@ contract Fortunebao is Owner, FortunbaoConfig{
     // 计算利息(活动倍数 + 不同套餐费率)
     uint interest = 0;
     if (bonusDays > 0) {
+      // 1. 本金 * 天数 * 基础利率 * 套餐增加利率
       interest = Configuration._getInterestIncreaseRate(tempDeposit.activityType, Configuration._makeInterestRate(tempDeposit.mealType, tempDeposit.depositAmount.mul(bonusDays)));
+
+      // 利息大于本金(仅在180天24%月利率和360天30%月利率可能出现)
+      //if (interest > d.depositAmount) {
+      //  // 2. 多出部分每天利息计算求和: 本金 * 基础利率 * 减产次数 * 8 / 10
+      //  interest = _makeReductionInterestRate(tempDeposit, bonusDays);
+      //}
     }
+    interest = Configuration._rounding(interest); // 四舍五入
     Configuration.InterestInfo memory info = Configuration.InterestInfo(
       tempDeposit,
       interest - tempDeposit.withdrawedInterest, // 应得利息减少已经提取的利息
@@ -239,9 +254,74 @@ contract Fortunebao is Owner, FortunbaoConfig{
     // 记录操作
     data.pushAllOperations(newOperation);
     data.setUserAddresses(msg.sender);
+    _recordReduction();
 
     token.transferFrom(msg.sender, address(this), newDeposit.depositAmount); // 移动指定质押token余额至合约
     emit DepositSuccessEvent();
+  }
+
+  // 获取减产时间数组
+  function getRedutionDateTime() public view returns(uint[] memory){
+    return reductionDateTimeArray;
+  }
+
+
+  // 创建减产利率后的结果
+  function _makeReductionInterestRate(Configuration.Deposit memory tempDeposit, uint bonusDays) private view returns(uint) {
+    uint totalInterest = 0;
+    while(bonusDays > 0) {
+      bonusDays = bonusDays.sub(1);
+    }
+    return Configuration._rounding(totalInterest);
+  }
+
+  // 记录减产信息
+  function _recordReduction() private {
+    uint dLength = data.getUserAddresses().length; // 参与活动数
+    uint currentRate = reductionBasicNumber;
+
+    // 记录减产次数以及减产时间
+    if (dLength >= currentRate.mul(1) && dLength < currentRate.mul(2)) {
+      if (reductionCount != 1) {
+        reductionCount = 1; // 减产次数 + 1
+        reductionDateTimeArray.push(block.timestamp); // 记录减产的时间 (当获息时间(计息时间 + 1 days) > 减产时间 && (获息时间 < 减产时间Next) ? 减产利率 : 减产之前利率 )
+      }
+    } else if (dLength >= currentRate.mul(2) && dLength < currentRate.mul(5)) {
+      if (reductionCount != 2) {
+        reductionCount = 2;
+        reductionDateTimeArray.push(block.timestamp);
+      }
+    } else if (dLength >= currentRate.mul(5) && dLength < currentRate.mul(10)) {
+      if (reductionCount != 3) {
+        reductionCount = 3;
+        reductionDateTimeArray.push(block.timestamp);
+      }
+    } else if (dLength >= currentRate.mul(10) && dLength < currentRate.mul(20)) {
+      if (reductionCount != 4) {
+        reductionCount = 4;
+        reductionDateTimeArray.push(block.timestamp);
+      }
+    } else if (dLength >= currentRate.mul(20) && dLength < currentRate.mul(50)) {
+      if (reductionCount != 5) {
+        reductionCount = 5;
+        reductionDateTimeArray.push(block.timestamp);
+      }
+    } else if (dLength >= currentRate.mul(50) && dLength < currentRate.mul(100)) {
+      if (reductionCount != 6) {
+        reductionCount = 6;
+        reductionDateTimeArray.push(block.timestamp);
+      }
+    } else if (dLength >= currentRate.mul(100) && dLength < currentRate.mul(200)) {
+      if (reductionCount != 7) {
+        reductionCount = 7;
+        reductionDateTimeArray.push(block.timestamp);
+      }
+    } else if (dLength >= currentRate.mul(200)) {
+      if (reductionCount != 8) {
+        reductionCount = 8;
+        reductionDateTimeArray.push(block.timestamp);
+      }
+    }
   }
 
 }

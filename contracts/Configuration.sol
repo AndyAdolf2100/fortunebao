@@ -92,19 +92,19 @@ library Configuration{
   function _makeInterestRate(MealType mealType, uint amount) internal view returns(uint) {
     require(amount > 0, 'illegal amount');
     if (mealType == MealType.FIRST) {
-      return _rounding(amount.mul(15).div(3000));
+      return amount.mul(15).div(3000);
     }
     if (mealType == MealType.SECOND) {
-      return _rounding(amount.mul(17).div(3000));
+      return amount.mul(17).div(3000);
     }
     if (mealType == MealType.THIRD) {
-      return _rounding(amount.mul(20).div(3000));
+      return amount.mul(20).div(3000);
     }
     if (mealType == MealType.FORTH) {
-      return _rounding(amount.mul(24).div(3000));
+      return amount.mul(24).div(3000);
     }
     if (mealType == MealType.FIFTH) {
-      return _rounding(amount.mul(30).div(3000));
+      return amount.mul(30).div(3000);
     }
     require(true, 'imT');
   }
