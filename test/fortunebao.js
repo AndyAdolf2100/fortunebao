@@ -148,6 +148,8 @@ contract("FortunebaoTest", (accounts) => {
        let after_amount = await dataContractInstance.getWhiteAddressAmount(alice, 1)
        console.log('after_amount = ', after_amount)
        assert.equal(after_amount, 0)  // 校验白名单购买数量是否变为0
+       total_addresses = await dataContractInstance.getUserAddresses()
+       assert.equal(total_addresses.length, 1)  // 全部参与活动地址数量 1
 
        // 基本信息校验
        totalDeposits = await dataContractInstance.getTotalDeposits()

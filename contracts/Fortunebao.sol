@@ -238,6 +238,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     );
     // 记录操作
     data.pushAllOperations(newOperation);
+    data.setUserAddresses(msg.sender);
 
     token.transferFrom(msg.sender, address(this), newDeposit.depositAmount); // 移动指定质押token余额至合约
     emit DepositSuccessEvent();

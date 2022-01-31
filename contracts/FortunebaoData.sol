@@ -49,6 +49,7 @@ contract FortunebaoData is Owner, FortunbaoConfig{
   mapping (uint => Configuration.Deposit) public totalDepositMappings; // ID快速查找Deposit(公开)
   Configuration.Operation[] public allOperations; //  用户操作(公开)
   mapping (address => bool) userJoined; // 判断用户是否参与了活动
+  address[] userAddresses; // 用户地址列表
   mapping (address => Configuration.Deposit[]) public userDeposits; //  用户所有的储蓄记录
 
   // 三轮白名单mapping以及地址列表
@@ -78,6 +79,24 @@ contract FortunebaoData is Owner, FortunbaoConfig{
     priceLooper = msg.sender;
     accessAllowed[msg.sender] = true;
     burningAddress = _burningAddress;
+  }
+
+  // 是否用户参与了活动
+  function isUserJoined(address user) public view returns(bool) {
+    return userJoined[user];
+  }
+
+  // 存入用户地址列表
+  function setUserAddresses(address user) public platform{
+    if (!isUserJoined(user)) {
+      userJoined[user] = true;
+      userAddresses.push(user);
+    }
+  }
+
+  // 取出用户地址列表
+  function getUserAddresses() public view returns(address[] memory){
+    return userAddresses;
   }
 
   // 获取白名单可购买量
