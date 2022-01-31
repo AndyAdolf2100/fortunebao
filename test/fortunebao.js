@@ -394,14 +394,14 @@ contract("FortunebaoTest", (accounts) => {
       console.log('5 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 360)
       console.log('5 interestInfo = ', interestInfo)
-      assert.equal(interestInfo.interest, '4667000000000000000000') // 1000 * 30 / 3000 * 359 * 1.3 = 4667.0
+      assert.equal(interestInfo.interest, '3821000000000000000000') // 原1000 * 30 / 3000 * 359 * 1.3 = 4667.0 | now: 3821000000000000000000, 77天收益: 77 * 13 还有 359 - 77 = 282天 总收益: 2820 + 1001
       await contractInstance.withdrawPrincipal(last_deposit.id, currentTime() + 86400 * 360)
       let allOperations = await dataContractInstance.getAllOperations()
       lastOperation = allOperations[allOperations.length - 1]
       console.info('5 lastOperation = ', lastOperation)
       assert.equal(lastOperation.operationType, 3) // 操作类型,选定提取惩罚3
       assert.equal(lastOperation.user, alice) // 记录参与活动地址
-      assert.equal(web3.utils.fromWei(lastOperation.amount), 1000) // 利息数量  1000 * 17 / 3000 * 25 * 1.3 = 4667 > 1000 = 1000
+      assert.equal(web3.utils.fromWei(lastOperation.amount), 1000) // 利息数量  1000 * 17 / 3000 * 359 * 1.3 = 4667 > 1000 = 1000
 
       userLastDeposits = await dataContractInstance.getUserDeposits(alice)
       assert.equal(lastOperation.depositId, last_deposit.id) // 指向deposit正确
@@ -427,21 +427,21 @@ contract("FortunebaoTest", (accounts) => {
       console.log('6 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 361)
       console.log('6 interestInfo = ', interestInfo)
-      assert.equal(interestInfo.interest, '4680000000000000000000') // 1000 * 30 / 3000 * 360 * 1.3 = 4667.0
+      assert.equal(interestInfo.interest, '3831000000000000000000') // 1000 * 30 / 3000 * 360 * 1.3 = 4680.0 | now: 3831000000000000000000, 77天收益: 77 * 13 还有 360 - 77 = 283天 总收益: 2830 + 1001
       await contractInstance.withdrawPrincipal(last_deposit.id, currentTime() + 86400 * 361)
       let allOperations = await dataContractInstance.getAllOperations()
       lastOperation = allOperations[allOperations.length - 1]
       console.info('6 lastOperation = ', lastOperation)
       assert.equal(lastOperation.operationType, 1) // 操作类型,选定提取成功1
       assert.equal(lastOperation.user, alice) // 记录参与活动地址
-      assert.equal(web3.utils.fromWei(lastOperation.amount), 4680) // 利息数量  1000 * 17 / 3000 * 25 * 1.3 = 4667 > 1000 = 1000
+      assert.equal(web3.utils.fromWei(lastOperation.amount), 3831) // 利息数量  看上面
 
       userLastDeposits = await dataContractInstance.getUserDeposits(alice)
       assert.equal(lastOperation.depositId, last_deposit.id) // 指向deposit正确
 
       // alice的cac余额不变
       let alice_cac_balance = await bonusToken.methods.balanceOf(alice).call()
-      assert.equal(web3.utils.fromWei(alice_cac_balance), '10004680')
+      assert.equal(web3.utils.fromWei(alice_cac_balance), '10003831')
 
       // 销毁地址放入销毁量 cac
       let burning_cac_balance = await bonusToken.methods.balanceOf(burning).call()

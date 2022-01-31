@@ -64,10 +64,10 @@ contract Fortunebao is Owner, FortunbaoConfig{
       interest = Configuration._getInterestIncreaseRate(tempDeposit.activityType, Configuration._makeInterestRate(tempDeposit.mealType, tempDeposit.depositAmount.mul(bonusDays)));
 
       // 利息大于本金(仅在180天24%月利率和360天30%月利率可能出现)
-      //if (interest > d.depositAmount) {
-      //  // 2. 多出部分每天利息计算求和: 本金 * 基础利率 * 减产次数 * 8 / 10
-      //  interest = _makeReductionInterestRate(tempDeposit, bonusDays);
-      //}
+      if (interest > tempDeposit.depositAmount) {
+        // 2. 多出部分每天利息计算求和: 本金 * 基础利率 * 减产次数 * 8 / 10
+        interest = _makeReductionInterestRate(tempDeposit, bonusDays, tempDeposit.mealType);
+      }
     }
     interest = Configuration._rounding(interest); // 四舍五入
     Configuration.InterestInfo memory info = Configuration.InterestInfo(
@@ -267,12 +267,50 @@ contract Fortunebao is Owner, FortunbaoConfig{
 
 
   // 创建减产利率后的结果
-  function _makeReductionInterestRate(Configuration.Deposit memory tempDeposit, uint bonusDays) private view returns(uint) {
+  function _makeReductionInterestRate(Configuration.Deposit memory tempDeposit, uint bonusDays, Configuration.MealType mealType) private view returns(uint) {
     uint totalInterest = 0;
+    uint dateCutIndex = 0; // 查找减半时间的index = 减半次数 = 0.8 ** n 中的n(n >= 0)
+    uint dateArrayLength = reductionDateTimeArray.length; // 减半时间记录的数组长度
+    uint depositAmount = tempDeposit.depositAmount;
     while(bonusDays > 0) {
+      // 比如1月31日 18:00 参与的活动
+      uint calcInterestDate = tempDeposit.calcInterestDate; // 计息时间 2月1日 00:00
+      uint getInterestDate = calcInterestDate + 86400;      // 得息时间 2月2日 00:00 (收益1天的利息)
+      // 当前获得利息的时间大于记录减产时间 所获得的利息应该减产
+      dateCutIndex = _calcReductionDateTimeCutIndex(dateCutIndex, getInterestDate); // 计算出当天利息减产的次数
+      uint currentInterest = Configuration._makeInterestRate(mealType, _calcReductionInterest(dateCutIndex, depositAmount)); // 计算出当天的利息
+      // 不超过本金的利息有预约轮的2、1.5、1.3倍
+      if (totalInterest <= depositAmount) {
+        currentInterest = Configuration._getInterestIncreaseRate(tempDeposit.activityType, currentInterest);
+      }
+      totalInterest = totalInterest.add(currentInterest); // 利息加到总利息之中
       bonusDays = bonusDays.sub(1);
     }
     return Configuration._rounding(totalInterest);
+  }
+
+  function _calcReductionInterest(uint indexNumber, uint depositAmount) private view returns(uint) {
+    while(indexNumber > 0) {
+      depositAmount = depositAmount.mul(8).div(10); // 减产为0.8倍
+      indexNumber = indexNumber.sub(1);
+    }
+    return depositAmount;
+  }
+
+  function _calcReductionDateTimeCutIndex(uint dateCutIndex, uint getInterestDate) private view returns(uint){
+    // 正常来说 dateCutIndex = 0，判断条件是必然成立的, 因为值是合约初始化的是否赋值的
+    if (reductionDateTimeArray[dateCutIndex] < getInterestDate) {
+      // 下一个减半时间是否也小于getInterestDate, 因为理论上一天不一定只减半1次
+      uint newCutIndex = dateCutIndex.add(1);
+      // 最后一个减半index
+      if ( newCutIndex == reductionDateTimeArray.length ) {
+        return dateCutIndex;
+      }
+      _calcReductionDateTimeCutIndex(newCutIndex, getInterestDate);
+    } else {
+      // 上一个index
+      return dateCutIndex.sub(1);
+    }
   }
 
   // 记录减产信息
