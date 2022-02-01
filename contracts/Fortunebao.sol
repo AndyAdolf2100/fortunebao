@@ -19,8 +19,9 @@ imT: mealType illegal
 contract Fortunebao is Owner, FortunbaoConfig{
   using SafeMath for uint;
 
-  // uint private constant reductionBasicNumber = 1000;              // 减产基础数(测试时可以降低为1) TODO
-  uint private constant reductionBasicNumber = 1;              // 减产基础数(测试时可以降低为1) TODO
+  // uint private constant reductionBasicNumber = 1000;        // 减产基础数(生产是1000) TODO
+  uint private constant reductionBasicNumber = 1;              // 减产基础数(测试时为1) TODO
+  bool private isProductionMode = false;                        // 当前环境 TODO
 
   FortunebaoData data; // 数据合约 所有常规不变数据从这里面取
 
@@ -373,11 +374,11 @@ contract Fortunebao is Owner, FortunbaoConfig{
     }
   }
 
-  // 模拟减产信息 TODO 发布前需要注释
+  // 模拟减产信息
   function mockReductionInfo(uint date) public isOwner{
+      require(!isProductionMode, 'Production can not do it.');
       reductionDateTimeArray.push(date);
       reductionCount = reductionDateTimeArray.length - 1;
   }
-
 
 }
