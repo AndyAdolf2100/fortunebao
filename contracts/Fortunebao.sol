@@ -255,7 +255,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     // 记录操作
     data.pushAllOperations(newOperation);
     data.setUserAddresses(msg.sender);
-    _recordReduction();
+    // _recordReduction();
 
     token.transferFrom(msg.sender, address(this), newDeposit.depositAmount); // 移动指定质押token余额至合约
     emit DepositSuccessEvent();
@@ -273,12 +273,15 @@ contract Fortunebao is Owner, FortunbaoConfig{
     uint dateCutIndex = 0; // 查找减半时间的index = 减半次数 = 0.8 ** n 中的n(n >= 0)
     uint dateArrayLength = reductionDateTimeArray.length; // 减半时间记录的数组长度
     uint depositAmount = tempDeposit.depositAmount;
+    uint calcInterestDate = tempDeposit.calcInterestDate; // 计息时间 2月1日 00:00
+    uint getInterestDate = calcInterestDate;
     while(bonusDays > 0) {
       // 比如1月31日 18:00 参与的活动
-      uint calcInterestDate = tempDeposit.calcInterestDate; // 计息时间 2月1日 00:00
-      uint getInterestDate = calcInterestDate + 86400;      // 得息时间 2月2日 00:00 (收益1天的利息)
+      getInterestDate = getInterestDate.add(86400);      // 得息时间 2月2日 00:00 (收益1天的利息)
       // 当前获得利息的时间大于记录减产时间 所获得的利息应该减产
       dateCutIndex = _calcReductionDateTimeCutIndex(dateCutIndex, getInterestDate); // 计算出当天利息减产的次数
+      // string memory message = string(abi.encodePacked("getInterestDate:", Utils.uint2str(getInterestDate), "dateCutIndex:", Utils.uint2str(uint(dateCutIndex)))); // 备注
+      // require(dateCutIndex == 1, message);
       uint currentInterest = Configuration._makeInterestRate(mealType, _calcReductionInterest(dateCutIndex, depositAmount)); // 计算出当天的利息
       // 不超过本金的利息有预约轮的2、1.5、1.3倍
       if (totalInterest <= depositAmount) {
@@ -291,23 +294,30 @@ contract Fortunebao is Owner, FortunbaoConfig{
   }
 
   function _calcReductionInterest(uint indexNumber, uint depositAmount) private view returns(uint) {
+    // require(indexNumber == 0, 'stop');
     while(indexNumber > 0) {
       depositAmount = depositAmount.mul(8).div(10); // 减产为0.8倍
       indexNumber = indexNumber.sub(1);
+
+      // string memory message = string(abi.encodePacked("indexNumber:", Utils.uint2str(uint(indexNumber)))); // 备注
+      // require(false, message);
     }
     return depositAmount;
   }
 
   function _calcReductionDateTimeCutIndex(uint dateCutIndex, uint getInterestDate) private view returns(uint){
     // 正常来说 dateCutIndex = 0，判断条件是必然成立的, 因为值是合约初始化的是否赋值的
-    if (reductionDateTimeArray[dateCutIndex] < getInterestDate) {
+    // 索引有效且在时间区间内
+    if ( dateCutIndex < reductionDateTimeArray.length && reductionDateTimeArray[dateCutIndex] <= getInterestDate) {
       // 下一个减半时间是否也小于getInterestDate, 因为理论上一天不一定只减半1次
       uint newCutIndex = dateCutIndex.add(1);
-      // 最后一个减半index
-      if ( newCutIndex == reductionDateTimeArray.length ) {
+      if (newCutIndex == reductionDateTimeArray.length) {
+        // string memory message = string(abi.encodePacked("getInterestDate:", Utils.uint2str(getInterestDate), "newCutIndex:", Utils.uint2str(uint(newCutIndex)), "length:", Utils.uint2str(uint(reductionDateTimeArray.length)), "dateCutIndex:", Utils.uint2str(uint(dateCutIndex)))); // 备注
+        // require(false, message);
         return dateCutIndex;
+      } else {
+        return _calcReductionDateTimeCutIndex(newCutIndex, getInterestDate);
       }
-      _calcReductionDateTimeCutIndex(newCutIndex, getInterestDate);
     } else {
       // 上一个index
       return dateCutIndex.sub(1);
