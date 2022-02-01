@@ -7,7 +7,7 @@ import "./CACPAToken.sol";
 import "./CACPBToken.sol";
 import "./CACPCToken.sol";
 import "./CACPToken.sol";
-import "./FortunbaoConfig.sol";
+import "./FortunebaoConfig.sol";
 import "./Configuration.sol";
 import "./Utils.sol";
 import "./Owner.sol";

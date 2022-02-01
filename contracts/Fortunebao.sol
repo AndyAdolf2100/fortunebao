@@ -7,7 +7,7 @@ import "./CACPBToken.sol";
 import "./CACPCToken.sol";
 import "./CACPToken.sol";
 import "./Owner.sol";
-import "./FortunbaoConfig.sol";
+import "./FortunebaoConfig.sol";
 import "./FortunebaoData.sol";
 import "./Configuration.sol";
 import "./Utils.sol";
@@ -19,9 +19,9 @@ imT: mealType illegal
 contract Fortunebao is Owner, FortunbaoConfig{
   using SafeMath for uint;
 
-  // uint private constant reductionBasicNumber = 1000;        // 减产基础数(生产是1000) TODO
-  uint private constant reductionBasicNumber = 1;              // 减产基础数(测试时为1) TODO
-  bool private isProductionMode = false;                        // 当前环境 TODO
+  uint private constant reductionBasicNumber = 1000;           // 减产基础数(生产是1000) TODO
+  // uint private constant reductionBasicNumber = 1;           // 减产基础数(测试时为1) TODO
+  bool private isProductionMode = true;                       // 当前环境 TODO
 
   FortunebaoData data; // 数据合约 所有常规不变数据从这里面取
 
@@ -80,8 +80,9 @@ contract Fortunebao is Owner, FortunbaoConfig{
     return info;
   }
 
-  // 仅提取利息 TODO
+  // 仅提取利息
   function withdrawOnlyInterest(uint depositId, uint nowTime) public noReentrancy {
+    require(!isProductionMode || nowTime == 0, 'illegal nowTime');
     if (nowTime == 0) {
       nowTime = block.timestamp;
     }
@@ -112,8 +113,9 @@ contract Fortunebao is Owner, FortunbaoConfig{
     emit WithdrawInterestSuccessEvent();
   }
 
-  // 提取利息以及本金 TODO
+  // 提取利息以及本金
   function withdrawPrincipal(uint depositId, uint nowTime) public noReentrancy {
+    require(!isProductionMode || nowTime == 0, 'illegal nowTime');
     if (nowTime == 0) {
       nowTime = block.timestamp;
     }
@@ -256,7 +258,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     // 记录操作
     data.pushAllOperations(newOperation);
     data.setUserAddresses(msg.sender);
-    // _recordReduction();
+    _recordReduction();
 
     token.transferFrom(msg.sender, address(this), newDeposit.depositAmount); // 移动指定质押token余额至合约
     emit DepositSuccessEvent();
@@ -375,7 +377,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
 
   // 模拟减产信息
   function mockReductionInfo(uint date) public isOwner{
-      require(!isProductionMode, 'Production can not do it.');
+      require(!isProductionMode, 'Production mode can not do it.');
       reductionDateTimeArray.push(date);
       reductionCount = reductionDateTimeArray.length - 1;
   }

@@ -297,11 +297,6 @@ contract("FortunebaoTest", (accounts) => {
       assert.equal(interestInfo.interest, toWei(442)) // 1000 * 17 / 3000 * 60 * 1.3 = 442
     })
 
-    it("本金百分百之后减产的逻辑需要搞一搞", async () => {
-      //TODO
-    })
-
-
     it("在第三轮-第二个套餐17%月化上，25天后仅提取利息, (当前时间 + 25 days)，能得到24天的利息 | 再过24天，再提取24天的利息 测试提取第二次", async () => {
       await contractInstance.addWhiteList(2, toWei(1000), alice)
       await purchase_in_white_list(2, 1) // 白名单质押 第三轮-第二个套餐 第二个套餐最多能拿60天
@@ -740,6 +735,39 @@ contract("FortunebaoTest", (accounts) => {
       console.info(alice_gb_balance)
       //assert.equal(web3.utils.fromWei(alice_gb_balance), 380 + PRE_MINING)
       //
+    })
+
+    it("质押减产 basicAmount = 1", async () => {
+
+      let array = await contractInstance.getRedutionDateTime()
+      let reductionCount = await contractInstance.reductionCount()
+      assert.equal(array.length, 1)
+      assert.equal(reductionCount, 0)
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 4) // 第一次质押
+
+      array = await contractInstance.getRedutionDateTime()
+      reductionCount = await contractInstance.reductionCount()
+      assert.equal(array.length, 2)
+      assert.equal(reductionCount, 1)
+
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 4) // 第二次质押不变(同样角色)
+
+      array = await contractInstance.getRedutionDateTime()
+      reductionCount = await contractInstance.reductionCount()
+      assert.equal(array.length, 2)
+      assert.equal(reductionCount, 1)
+      await purchaseCToken.methods.approve(contractInstance.address, toWei('20000000')).send({from: bob})
+      await purchaseCToken.methods.transfer(bob, toWei('1000')).send({ from: alice });
+      await contractInstance.addWhiteList(2, toWei(1000), bob)
+      await contractInstance.depositInWhiteList(2, 4, {from: bob})
+
+      array = await contractInstance.getRedutionDateTime()
+      reductionCount = await contractInstance.reductionCount()
+      assert.equal(array.length, 3)
+      assert.equal(reductionCount, 2)
+
     })
 
     it("设置/获取cac价格", async () => {
