@@ -1,3 +1,9 @@
+# 理财宝合约
+### 开发环境
+```
+Truffle v5.4.27 (core: 5.4.27)
+Node v14.16.0
+```
 ### 启动模拟本地节点
 ```
 $ ganache-cli -l 0x10378ea0
@@ -24,4 +30,19 @@ _recordReduction()
       -1
       +2
 
+```
+
+### 部署到bsc网络
+测试网
+```
+$ truffle migrate --network testnet
+```
+主网
+```
+$ truffle migrate --network bsc
+```
+### 注意事项
+```
+版本:
+@truffle/hdwallet-provider@2.0.0
 ```
