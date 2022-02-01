@@ -452,6 +452,42 @@ contract("FortunebaoTest", (accounts) => {
       assert.equal(web3.utils.fromWei(alice_cacp_balance), 10001000 ) // 10000000 + 1000
     })
 
+    it("在上一个测试上：第三轮-第五个套餐30%月化上，361天后仅提取本金，套餐时间达成, (当前时间 + 360 days)，拿回所有本金和利息，从第340天开始减产，减产1次", async () => {
+      await contractInstance.mockReductionInfo(currentTime() + 86400 * 340)
+      let array = await contractInstance.getRedutionDateTime()
+      console.info('reductionDateTimeArray = ', array);
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 4) // 白名单质押 第三轮-第五个套餐 第五个套餐最多能拿360天
+      my_deposits = await dataContractInstance.getTotalDeposits()
+      last_deposit = my_deposits[my_deposits.length - 1]
+      console.log('6 last_deposit = ', last_deposit)
+      let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 361)
+      console.log('6 interestInfo = ', interestInfo)
+      assert.equal(interestInfo.interest, '3831000000000000000000') // 1000 * 30 / 3000 * 360 * 1.3 = 4680.0 | now: 3831000000000000000000, 77天收益: 77 * 13 还有 360 - 77 = 283天 总收益: 2830 + 1001
+      await contractInstance.withdrawPrincipal(last_deposit.id, currentTime() + 86400 * 361)
+      let allOperations = await dataContractInstance.getAllOperations()
+      lastOperation = allOperations[allOperations.length - 1]
+      console.info('6 lastOperation = ', lastOperation)
+      assert.equal(lastOperation.operationType, 1) // 操作类型,选定提取成功1
+      assert.equal(lastOperation.user, alice) // 记录参与活动地址
+      assert.equal(web3.utils.fromWei(lastOperation.amount), 3831) // 利息数量  看上面
+
+      userLastDeposits = await dataContractInstance.getUserDeposits(alice)
+      assert.equal(lastOperation.depositId, last_deposit.id) // 指向deposit正确
+
+      // alice的cac余额不变
+      let alice_cac_balance = await bonusToken.methods.balanceOf(alice).call()
+      assert.equal(web3.utils.fromWei(alice_cac_balance), '10003831')
+
+      // 销毁地址放入销毁量 cac
+      let burning_cac_balance = await bonusToken.methods.balanceOf(burning).call()
+      assert.equal(web3.utils.fromWei(burning_cac_balance), 0)
+
+      // 本金全部提取
+      let alice_cacp_balance = await purchaseNormalToken.methods.balanceOf(alice).call()
+      assert.equal(web3.utils.fromWei(alice_cacp_balance), 10001000 ) // 10000000 + 1000
+    })
+
 
     xit("四舍五入看看有没有问题", async () => {
 
