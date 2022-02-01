@@ -80,7 +80,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     return info;
   }
 
-  // 仅提取利息
+  // 仅提取利息 TODO
   function withdrawOnlyInterest(uint depositId, uint nowTime) public noReentrancy {
     if (nowTime == 0) {
       nowTime = block.timestamp;
@@ -112,7 +112,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     emit WithdrawInterestSuccessEvent();
   }
 
-  // 提取利息以及本金
+  // 提取利息以及本金 TODO
   function withdrawPrincipal(uint depositId, uint nowTime) public noReentrancy {
     if (nowTime == 0) {
       nowTime = block.timestamp;
@@ -206,7 +206,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
   function _generalUserDepositRecord(IERC20 token, uint depositAmount, Configuration.ActivityType activityType, Configuration.MealType mealType) private {
     require(depositAmount / TO_WEI > 0, 'Deposit amount is too less'); // 质押必须大于1个
     // 校验depositAmount
-    require((depositAmount * data.getCacPrice()) / TO_WEI > targetUSDTValue, 'Deposit amount value is too less');
+    require((depositAmount * data.getCacPrice()) / TO_WEI > targetUSDTValue, 'Deposit amount USD value is too less');
     // 校验depositAmount
     require(depositAmount > 0, 'Deposit amount must more than zero');
     // 校验activityType
@@ -266,7 +266,6 @@ contract Fortunebao is Owner, FortunbaoConfig{
   function getRedutionDateTime() public view returns(uint[] memory){
     return reductionDateTimeArray;
   }
-
 
   // 创建减产利率后的结果
   function _makeReductionInterestRate(Configuration.Deposit memory tempDeposit, uint bonusDays, Configuration.MealType mealType) private view returns(uint) {
