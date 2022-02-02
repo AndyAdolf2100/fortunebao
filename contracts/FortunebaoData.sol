@@ -42,7 +42,7 @@ contract FortunebaoData is Owner, FortunbaoConfig{
   IERC20 private thirdToken;    // CACPC token
   IERC20 private normalToken;   // CACP token
   ERC20  private bonusToken;    // CAC token 用于利息
-  uint private cacusdtPrice = _toWei(8);  // cacusdt 价格(默认是8) TODO
+  uint private cacusdtPrice = _toWei(1);  // cacusdt 价格(默认是1) TODO
 
   // 质押、提取本金和利息、提取利息
   Configuration.Deposit[] public totalDeposits; // 全部的充值信息(公开)
