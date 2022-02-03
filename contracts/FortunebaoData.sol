@@ -42,10 +42,10 @@ contract FortunebaoData is Owner, FortunbaoConfig{
   IERC20 private thirdToken;    // CACPC token
   IERC20 private normalToken;   // CACP token
   ERC20  private bonusToken;    // CAC token 用于利息
-  uint private cacusdtPrice = _toWei(1);  // cacusdt 价格(默认是1) TODO
+  uint private cacusdtPrice = _toWei(8);  // cacusdt 价格(默认是8) TODO
 
   // 质押、提取本金和利息、提取利息
-  Configuration.Deposit[] public totalDeposits; // 全部的充值信息(公开)
+  Configuration.Deposit[] public totalDeposits; // 全部的充值信息(公开) isWithdrawed 和 已提现的利息字段不作数
   mapping (uint => Configuration.Deposit) public totalDepositMappings; // ID快速查找Deposit(公开)
   Configuration.Operation[] public allOperations; //  用户操作(公开)
   mapping (address => bool) userJoined; // 判断用户是否参与了活动
@@ -183,9 +183,6 @@ contract FortunebaoData is Owner, FortunbaoConfig{
   // push new Deposit
   function pushTotalDeposits(Configuration.Deposit memory d) public platform {
     totalDeposits.push(d);
-
-    // 记录用户强引用数组
-    _pushUserDeposits(d.user);
     // 制作所有deposit的索引
     _autoSetTotalDepositMapping(d.user);
   }
@@ -216,14 +213,28 @@ contract FortunebaoData is Owner, FortunbaoConfig{
 
   // 增长Deposit已收入利息
   function increaseDepositWithdrawedInterest(uint depositId, uint interest) public platform{
-    Configuration.Deposit storage d =  totalDepositMappings[depositId];
+    Configuration.Deposit storage d = totalDepositMappings[depositId];
     d.withdrawedInterest = d.withdrawedInterest.add(interest);
+    // userDeposits 需要也调整一下
+    for(uint i = 0; i < userDeposits[d.user].length ; i ++) {
+      if (userDeposits[d.user][i].id == d.id) {
+        userDeposits[d.user][i].withdrawedInterest = d.withdrawedInterest;
+        break;
+      }
+    }
   }
 
   // 设置Deposit已提取
   function setDepositWithdrawed(uint depositId) public platform{
-    Configuration.Deposit storage d =  totalDepositMappings[depositId];
+    Configuration.Deposit storage d = totalDepositMappings[depositId];
     d.isWithdrawed = true;
+    // userDeposits 需要也调整一下
+    for(uint i = 0; i < userDeposits[d.user].length ; i ++) {
+      if (userDeposits[d.user][i].id == d.id) {
+        userDeposits[d.user][i].isWithdrawed = true;
+        break;
+      }
+    }
   }
 
   modifier isPriceLooper() {
@@ -244,17 +255,22 @@ contract FortunebaoData is Owner, FortunbaoConfig{
     accessAllowed[_addr] = false;
   }
 
-  function _pushUserDeposits(address addr) private {
-    Configuration.Deposit storage tempDeposit = totalDeposits[totalDeposits.length - 1];
+  // 记录用户的deposits
+  function _pushUserDeposits(uint depositId, address addr) private {
+    Configuration.Deposit storage tempDeposit = totalDepositMappings[depositId];
     require(addr == tempDeposit.user, 'user deposit addr error');
     userDeposits[addr].push(tempDeposit);
   }
 
+  // 记录deposit到大map上
   function _autoSetTotalDepositMapping(address addr) private {
+    require(totalDeposits.length > 0, 'totalDeposits length equal 0');
     Configuration.Deposit storage tempDeposit = totalDeposits[totalDeposits.length - 1];
     require(addr == tempDeposit.user, 'user deposit addr error');
     require(totalDepositMappings[tempDeposit.id].id == 0, 'deposit id has been declared');
     totalDepositMappings[tempDeposit.id] = tempDeposit;
+
+    _pushUserDeposits(tempDeposit.id, addr);
   }
 
 

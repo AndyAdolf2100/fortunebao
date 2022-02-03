@@ -65,7 +65,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
       // 1. 本金 * 天数 * 基础利率 * 套餐增加利率
       interest = Configuration._getInterestIncreaseRate(tempDeposit.activityType, Configuration._makeInterestRate(tempDeposit.mealType, tempDeposit.depositAmount.mul(bonusDays)));
 
-      // 利息大于本金(仅在180天24%月利率和360天30%月利率可能出现)
+      // 利息大于本金100%
       if (interest > tempDeposit.depositAmount) {
         // 2. 多出部分每天利息计算求和: 本金 * 基础利率 * 减产次数 * 8 / 10
         interest = _makeReductionInterestRate(tempDeposit, bonusDays, tempDeposit.mealType);
@@ -122,6 +122,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     Configuration.InterestInfo memory info = getInterest(depositId, nowTime);
     uint interest = info.interest;    // 得到利息
     Configuration.Deposit memory d = info.deposit; // 得到操作的Deposit
+    require(!d.isWithdrawed, 'Deposit has been withdrawed'); // 已经提取过了不能重复提取
     bool needPublishment = info.needDepositPunishment; // 是否需要得到惩罚
     address transferTarget = msg.sender; // 转移目标地址(黑洞/用户账户)
     uint transferAmount = 0; // 黑洞燃烧/利息提取

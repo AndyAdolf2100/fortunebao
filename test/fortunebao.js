@@ -43,6 +43,9 @@ contract("FortunebaoTest", (accounts) => {
         console.log('GasUsed: ' + purchaseRequest.receipt.gasUsed.toString())
       }
 
+      totalDeposits = await dataContractInstance.getTotalDeposits()
+      allOperations = await dataContractInstance.getAllOperations()
+
       console.log('totalDeposits == ')
       console.log(totalDeposits)
       console.log('allOperations == ')
@@ -364,6 +367,19 @@ contract("FortunebaoTest", (accounts) => {
       assert.equal(lastOperation.operationType, 3) // 操作类型,选定提取惩罚3
       assert.equal(lastOperation.user, alice) // 记录参与活动地址
       assert.equal(web3.utils.fromWei(lastOperation.amount), 176.8 * 2) // 利息数量  1000 * 17 / 3000 * 25 * 1.3 = 442
+
+      my_deposits = await dataContractInstance.getTotalDeposits()
+      last_deposit = my_deposits[my_deposits.length - 1]
+      console.info('new last_deposit == ', last_deposit)
+      let user_total_deposit = await dataContractInstance.getTotalDepositMapping(last_deposit.id)
+      console.info('new user_total_deposit == ', user_total_deposit)
+      console.info('new user_total_deposit isWithdrawed == ', user_total_deposit.isWithdrawed)
+      assert.equal(user_total_deposit.isWithdrawed, true) // 全部Deposit Mapping
+      let user_deposits = await dataContractInstance.getUserDeposits(alice)
+      let user_deposit  = user_deposits[user_deposits.length - 1]
+      assert.equal(user_deposit.isWithdrawed, true) // 用户Deposit
+      console.info('new user_deposit == ', user_deposit)
+      console.info('new user_deposit isWithdrawed == ', user_deposit.isWithdrawed)
 
       userLastDeposits = await dataContractInstance.getUserDeposits(alice)
       assert.equal(lastOperation.depositId, last_deposit.id) // 指向deposit正确
