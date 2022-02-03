@@ -12,7 +12,7 @@ import "./Configuration.sol";
 import "./Utils.sol";
 import "./Owner.sol";
 /*
-  理财宝智能合约:
+  财富宝智能合约:
 
   1. 四期活动一览:
   第一轮: 2倍利息
