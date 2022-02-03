@@ -89,6 +89,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     Configuration.InterestInfo memory info = getInterest(depositId, nowTime);
     uint interest = info.interest;    // 得到利息
     Configuration.Deposit memory d = info.deposit; // 得到操作的Deposit
+    require(!d.isWithdrawed, 'Deposit has been withdrawed'); // 已经提取过了不能重复提取
     require(interest > 0, 'interest is zero');
 
     data.increaseDepositWithdrawedInterest(d.id, interest);
