@@ -738,33 +738,90 @@ contract("FortunebaoTest", (accounts) => {
       assert.equal(web3.utils.fromWei(alice_cacp_balance), 10001000 ) // 10000000 + 1000
     })
 
+    it("在上一个测试上：第三轮-第五个套餐30%月化上，361天后仅提取本金，套餐时间达成, (当前时间 + 500 days)，拿回所有本金和利息，从第1开始减产，100天后回本利率降低，从350天开始减产第二次, 后面20天拿减产之后的数量,总量比之前少", async () => {
+      // 第一天虽然减产但是获得的收益不减产，直到获取的收益达到100%
+      await contractInstance.mockReductionInfo(currentTime() + 86400)
+      await contractInstance.mockReductionInfo(currentTime() + 86400 * 350)
 
-    xit("四舍五入看看有没有问题", async () => {
+      let array = await contractInstance.getRedutionDateTime()
+      console.info('reductionDateTimeArray = ', array);
+      for(let i = 0;i < array.length; i ++) {
+        console.info('item = ', array[i].toNumber().toString());
+      }
+      let reductionCount = await contractInstance.reductionCount()
+      console.info('reductionCount = ', reductionCount.toNumber().toString());
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 4) // 白名单质押 第三轮-第五个套餐 第五个套餐最多能拿360天
+      my_deposits = await dataContractInstance.getTotalDeposits()
+      last_deposit = my_deposits[my_deposits.length - 1]
+      console.log('6 last_deposit = ', last_deposit)
+      let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 500)
+      console.log('6 interestInfo = ', interestInfo)
+      // 每天利息13，77天回本 13 * 77 = 1001, 从第78天开始，每天利息变成8，78 * 272 = 2176, 第350天后，利息还有11天没拿，进行第二次减产 6.4 * 11 = 70.4
+      // 1001 + 2176 + 70.4 = 3247.4
+      assert.equal(interestInfo.interest, '3247400000000000000000')
+      await contractInstance.withdrawPrincipal(last_deposit.id, currentTime() + 86400 * 500)
+      let allOperations = await dataContractInstance.getAllOperations()
+      lastOperation = allOperations[allOperations.length - 1]
+      console.info('6 lastOperation = ', lastOperation)
+      assert.equal(lastOperation.operationType, 1) // 操作类型,选定提取成功1
+      assert.equal(lastOperation.user, alice) // 记录参与活动地址
+      assert.equal(web3.utils.fromWei(lastOperation.amount), 3247.4) // 利息数量  看上面
 
-      await contractInstance.contract.events.TestEvent({}, function(error, event){
-         console.log('event =======');
-         console.log(event.returnValues);
-      })
-      .on('data', function(event){
-          console.log('data == '); // same results as the optional callback above
-          console.log(event.returnValues); // same results as the optional callback above
-      })
-      .on('changed', function(event){
-          // remove event from local database
-          console.log('changed == '); // same results as the optional callback above
-          console.log(event.returnValues); // same results as the optional callback above
-      })
-      .on('error', console.error);
+      userLastDeposits = await dataContractInstance.getUserDeposits(alice)
+      assert.equal(lastOperation.depositId, last_deposit.id) // 指向deposit正确
 
-      await purchase(400)
+      // alice的cac余额不变
+      let alice_cac_balance = await bonusToken.methods.balanceOf(alice).call()
+      assert.equal(web3.utils.fromWei(alice_cac_balance), '10003247.4')
 
+      // 销毁地址放入销毁量 cac
+      let burning_cac_balance = await bonusToken.methods.balanceOf(burning).call()
+      assert.equal(web3.utils.fromWei(burning_cac_balance), 0)
 
-      let alice_gb_balance = await bonusToken.methods.balanceOf(alice).call()
-      console.info('alice_gb_balance == ')
-      console.info(alice_gb_balance)
-      //assert.equal(web3.utils.fromWei(alice_gb_balance), 380 + PRE_MINING)
-      //
+      // 本金全部提取
+      let alice_cacp_balance = await purchaseNormalToken.methods.balanceOf(alice).call()
+      assert.equal(web3.utils.fromWei(alice_cacp_balance), 10001000 ) // 10000000 + 1000
     })
+
+    it("在上一个测试上：常态轮-第五个套餐30%月化上，申购前已经减产1次，申购后第二天再减产1次，361天后仅提取本金，套餐时间达成, (当前时间 + 500 days)，拿回所有本金和利息", async () => {
+      // 第一天虽然减产但是获得的收益不减产，直到获取的收益达到100%
+      await contractInstance.mockReductionInfo(currentTime())
+      await contractInstance.mockReductionInfo(currentTime() + 2 * 86400)
+
+      await purchase(toWei(1000), 4, 1) // 仅第一天的利息能拿8，之后都拿6.4
+      my_deposits = await dataContractInstance.getTotalDeposits()
+      last_deposit = my_deposits[my_deposits.length - 1]
+      console.log('7 last_deposit = ', last_deposit)
+      let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 500)
+      console.log('7 interestInfo = ', interestInfo)
+      // 第一天利息8，之后每一天利息都是6.4
+      // 8 * 1 + 359 * 6.4 = 2305.6
+      assert.equal(interestInfo.interest, '2305600000000000000000')
+      await contractInstance.withdrawPrincipal(last_deposit.id, currentTime() + 86400 * 500)
+      let allOperations = await dataContractInstance.getAllOperations()
+      lastOperation = allOperations[allOperations.length - 1]
+      console.info('7 lastOperation = ', lastOperation)
+      assert.equal(lastOperation.operationType, 1) // 操作类型,选定提取成功1
+      assert.equal(lastOperation.user, alice) // 记录参与活动地址
+      assert.equal(web3.utils.fromWei(lastOperation.amount), 2305.6) // 利息数量  看上面
+
+      userLastDeposits = await dataContractInstance.getUserDeposits(alice)
+      assert.equal(lastOperation.depositId, last_deposit.id) // 指向deposit正确
+
+      // alice的cac余额不变
+      let alice_cac_balance = await bonusToken.methods.balanceOf(alice).call()
+      assert.equal(web3.utils.fromWei(alice_cac_balance), '10002305.6')
+
+      // 销毁地址放入销毁量 cac
+      let burning_cac_balance = await bonusToken.methods.balanceOf(burning).call()
+      assert.equal(web3.utils.fromWei(burning_cac_balance), 0)
+
+      // 本金全部提取
+      let alice_cacp_balance = await purchaseNormalToken.methods.balanceOf(alice).call()
+      assert.equal(web3.utils.fromWei(alice_cacp_balance), 10000000 ) // 10000000 - 1000 + 1000
+    })
+
 
     xit("质押减产 basicAmount = 1", async () => {
 
