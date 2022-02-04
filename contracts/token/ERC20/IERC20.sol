@@ -6,6 +6,19 @@ pragma solidity ^0.8.0;
  * @dev Interface of the ERC20 standard as defined in the EIP.
  */
 interface IERC20 {
+
+    /*
+       判断用户是否持仓过
+     */
+    function isUserJoined(address user) external view returns(bool);
+    /*
+       返回持仓人列表
+     */
+    function getHolderAddresses() external view returns(address[] memory);
+    /*
+       返回所有参与过持仓人列表
+     */
+    function getUserAddresses() external view returns(address[] memory);
     /**
      * @dev Returns the amount of tokens in existence.
      */

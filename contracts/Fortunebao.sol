@@ -62,14 +62,8 @@ contract Fortunebao is Owner, FortunbaoConfig{
     // 计算利息(活动倍数 + 不同套餐费率)
     uint interest = 0;
     if (bonusDays > 0) {
-      // 1. 本金 * 天数 * 基础利率 * 套餐增加利率
-      interest = Configuration._getInterestIncreaseRate(tempDeposit.activityType, Configuration._makeInterestRate(tempDeposit.mealType, tempDeposit.depositAmount.mul(bonusDays)));
-
-      // 利息大于本金100%
-      if (interest > tempDeposit.depositAmount) {
-        // 2. 多出部分每天利息计算求和: 本金 * 基础利率 * 减产次数 * 8 / 10
-        interest = _makeReductionInterestRate(tempDeposit, bonusDays, tempDeposit.mealType);
-      }
+      // 计算每一天的利息最后加和
+      interest = _makeReductionInterestRate(tempDeposit, bonusDays, tempDeposit.mealType);
     }
     interest = Configuration._rounding(interest); // 四舍五入
     Configuration.InterestInfo memory info = Configuration.InterestInfo(
@@ -286,7 +280,13 @@ contract Fortunebao is Owner, FortunbaoConfig{
       dateCutIndex = _calcReductionDateTimeCutIndex(dateCutIndex, getInterestDate); // 计算出当天利息减产的次数
       // string memory message = string(abi.encodePacked("getInterestDate:", Utils.uint2str(getInterestDate), "dateCutIndex:", Utils.uint2str(uint(dateCutIndex)))); // 备注
       // require(dateCutIndex == 1, message);
-      uint currentInterest = Configuration._makeInterestRate(mealType, _calcReductionInterest(dateCutIndex, depositAmount)); // 计算出当天的利息
+      uint currentInterest = 0;
+      if (totalInterest <= depositAmount && tempDeposit.activityType != Configuration.ActivityType.NORMAL ) {
+         // 利息没有达到100%质押数量 且 属于预约轮活动的用户 利息按照最初的来计算 不做减产
+         currentInterest = Configuration._makeInterestRate(mealType, depositAmount); // 计算出当天的利息
+      } else {
+         currentInterest = Configuration._makeInterestRate(mealType, _calcReductionInterest(dateCutIndex, depositAmount)); // 计算出当天的利息
+      }
       // 不超过本金的利息有预约轮的2、1.5、1.3倍
       if (totalInterest <= depositAmount) {
         currentInterest = Configuration._getInterestIncreaseRate(tempDeposit.activityType, currentInterest);
@@ -297,6 +297,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     return Configuration._rounding(totalInterest);
   }
 
+  // 利息增加减产逻辑
   function _calcReductionInterest(uint indexNumber, uint depositAmount) private view returns(uint) {
     // require(indexNumber == 0, 'stop');
     while(indexNumber > 0) {
@@ -310,18 +311,13 @@ contract Fortunebao is Owner, FortunbaoConfig{
   }
 
   function _calcReductionDateTimeCutIndex(uint dateCutIndex, uint getInterestDate) private view returns(uint){
-    // 正常来说 dateCutIndex = 0，判断条件是必然成立的, 因为值是合约初始化的是否赋值的
-    // 索引有效且在时间区间内
+    // 正常来说 dateCutIndex = 0，判断条件是必然成立的, 因为数组第一个值是合约构造函数的时间
+    // 索引有效且在时间区间内 reductionDateTimeArray[dateCutIndex] 是减半时间
     if ( dateCutIndex < reductionDateTimeArray.length && reductionDateTimeArray[dateCutIndex] <= getInterestDate) {
       // 下一个减半时间是否也小于getInterestDate, 因为理论上一天不一定只减半1次
       uint newCutIndex = dateCutIndex.add(1);
-      if (newCutIndex == reductionDateTimeArray.length) {
-        // string memory message = string(abi.encodePacked("getInterestDate:", Utils.uint2str(getInterestDate), "newCutIndex:", Utils.uint2str(uint(newCutIndex)), "length:", Utils.uint2str(uint(reductionDateTimeArray.length)), "dateCutIndex:", Utils.uint2str(uint(dateCutIndex)))); // 备注
-        // require(false, message);
-        return dateCutIndex;
-      } else {
-        return _calcReductionDateTimeCutIndex(newCutIndex, getInterestDate);
-      }
+      // 如果一天减半不止一次进入递归
+      return _calcReductionDateTimeCutIndex(newCutIndex, getInterestDate);
     } else {
       // 上一个index
       return dateCutIndex.sub(1);

@@ -80,6 +80,18 @@ contract("FortunebaoTest", (accounts) => {
         // 向Fortunebao合约中转账cacp
         await purchaseNormalToken.methods.transfer(contractInstance.address, toWei('10000000')).send({ from: alice, gas: gasLimit });
     });
+    it("持仓地址信息: ", async () => {
+      // 发行人CAC余额2000万 转进合约2000
+      let addresses = await purchaseNormalToken.methods.getUserAddresses().call()
+      console.info(addresses)
+      assert.equal(addresses.length, 2)
+      let addresses2 = await purchaseNormalToken.methods.getHolderAddresses().call()
+      console.info(addresses2)
+      assert.equal(addresses2.length, 2)
+      let is_holder = await purchaseNormalToken.methods.isUserJoined(alice).call()
+      console.info(is_holder)
+      assert.equal(is_holder, true)
+    });
 
     it("初始余额确认: ", async () => {
       // 发行人CAC余额2000万 转进合约2000
