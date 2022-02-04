@@ -8,6 +8,7 @@ const cacpctoken = require('../build/contracts/CACPCToken.json')
 const cacptoken = require('../build/contracts/CACPToken.json')
 
 contract("FortunebaoTest", (accounts) => {
+    const gasLimit = '0x1adb0'
     let catchRevert = require("./utils/exceptions.js").catchRevert;
 
     let [alice, bob, burning] = accounts; // 获取两个地址 + 销毁地址
@@ -75,9 +76,9 @@ contract("FortunebaoTest", (accounts) => {
         // 允许操作合约
         await dataContractInstance.allowAccess(contractInstance.address, {from: alice});
         // 向Fortunebao合约中转账cac
-        await bonusToken.methods.transfer(contractInstance.address, toWei('10000000')).send({ from: alice });
+        await bonusToken.methods.transfer(contractInstance.address, toWei('10000000')).send({ from: alice, gas: gasLimit });
         // 向Fortunebao合约中转账cacp
-        await purchaseNormalToken.methods.transfer(contractInstance.address, toWei('10000000')).send({ from: alice });
+        await purchaseNormalToken.methods.transfer(contractInstance.address, toWei('10000000')).send({ from: alice, gas: gasLimit });
     });
 
     it("初始余额确认: ", async () => {
@@ -753,7 +754,7 @@ contract("FortunebaoTest", (accounts) => {
       //
     })
 
-    it("质押减产 basicAmount = 1", async () => {
+    xit("质押减产 basicAmount = 1", async () => {
 
       let array = await contractInstance.getRedutionDateTime()
       let reductionCount = await contractInstance.reductionCount()
@@ -775,7 +776,7 @@ contract("FortunebaoTest", (accounts) => {
       assert.equal(array.length, 2)
       assert.equal(reductionCount, 1)
       await purchaseCToken.methods.approve(contractInstance.address, toWei('20000000')).send({from: bob})
-      await purchaseCToken.methods.transfer(bob, toWei('1000')).send({ from: alice });
+      await purchaseCToken.methods.transfer(bob, toWei('1000')).send({ from: alice, gas: gasLimit });
       await contractInstance.addWhiteList(2, toWei(1000), bob)
       await contractInstance.depositInWhiteList(2, 4, {from: bob})
 

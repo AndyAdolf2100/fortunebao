@@ -32,6 +32,8 @@ import "../../utils/Context.sol";
  */
 contract ERC20 is Context, IERC20, IERC20Metadata {
     mapping (address => uint256) private _balances;
+    mapping (address => bool) private _userJoined; // 判断用户是否参与了持仓
+    address[] private _userAddresses; // 曾经持仓过的用户地址列表
 
     mapping (address => mapping (address => uint256)) private _allowances;
 
@@ -194,6 +196,35 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
         return true;
     }
 
+    // 是否用户参与了持仓
+    function isUserJoined(address user) public view virtual returns(bool) {
+      return _userJoined[user];
+    }
+
+    // 取出用户地址列表
+    function getUserAddresses() public view virtual returns(address[] memory){
+      return _userAddresses;
+    }
+
+    //// 取出持仓用户地址列表
+    function getHolderAddresses() public view virtual returns(address[] memory){
+      uint number = 0;
+      for (uint i = 0; i < _userAddresses.length; i ++) {
+        if (balanceOf(_userAddresses[i]) > 0) {
+          number += 1;
+        }
+      }
+      address[] memory holderAddresses = new address[](number);
+      uint j = 0;
+      for (uint i = 0; i < _userAddresses.length; i ++) {
+        if (balanceOf(_userAddresses[i]) > 0) {
+          holderAddresses[j] = _userAddresses[i];
+          j += 1;
+        }
+      }
+      return holderAddresses;
+    }
+
     /**
      * @dev Moves tokens `amount` from `sender` to `recipient`.
      *
@@ -300,5 +331,13 @@ contract ERC20 is Context, IERC20, IERC20Metadata {
      *
      * To learn more about hooks, head to xref:ROOT:extending-contracts.adoc#using-hooks[Using Hooks].
      */
-    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual { }
+    function _beforeTokenTransfer(address from, address to, uint256 amount) internal virtual {
+        // 判断接收者是否已经参与过持仓
+        if (!_userJoined[to]) {
+          _userJoined[to] = true;
+          _userAddresses.push(to);
+        }
+
+
+    }
 }
