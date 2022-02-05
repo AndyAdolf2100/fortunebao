@@ -24,7 +24,8 @@ module.exports = {
       network_id: 56,
       confirmations: 10,
       timeoutBlocks: 200,
-      skipDryRun: true
+      skipDryRun: true,
+      gasPrice: 5000000000
     },
   },
   mocha: {
