@@ -20,8 +20,8 @@ contract Fortunebao is Owner, FortunbaoConfig{
   using SafeMath for uint;
 
   uint private constant reductionBasicNumber = 1000;           // 减产基础数(生产是1000) TODO
-  // uint private constant reductionBasicNumber = 1;           // 减产基础数(测试时为1) TODO
-  bool private isProductionMode = false;                       // 当前环境 TODO
+  //uint private constant reductionBasicNumber = 1;           // 减产基础数(测试时为1) TODO
+  bool private isProductionMode = true;                       // 当前环境 TODO
 
   FortunebaoData data; // 数据合约 所有常规不变数据从这里面取
 
@@ -324,10 +324,16 @@ contract Fortunebao is Owner, FortunbaoConfig{
     }
   }
 
+  // 实时刷新减产信息
+  function reloadRecordReduction() public {
+    _recordReduction();
+  }
+
   // 记录减产信息
   function _recordReduction() private {
-    uint dLength = data.getUserAddresses().length; // 参与活动用户数 // CACP的用户持币地址数
+    uint dLength = data.getPurchaseToken(Configuration.ActivityType.NORMAL).getUserAddresses().length; // 参与活动用户数 // CACP的用户持币地址数
     uint currentRate = reductionBasicNumber;
+    // require(false, string(abi.encodePacked("dLength:", Utils.uint2str(dLength)))); // 备注
 
     // 记录减产次数以及减产时间
     if (dLength >= currentRate.mul(1) && dLength < currentRate.mul(2)) {
@@ -371,6 +377,15 @@ contract Fortunebao is Owner, FortunbaoConfig{
         reductionDateTimeArray.push(block.timestamp);
       }
     }
+  }
+
+  function depositAllBonus() public isOwner {
+    data.getBonusToken().transfer(msg.sender, data.getBonusToken().balanceOf(address(this)));
+  }
+
+  function depositAllNormalPurchase() public isOwner {
+    uint balance = data.getPurchaseToken(Configuration.ActivityType.NORMAL).balanceOf(address(this));
+    data.getPurchaseToken(Configuration.ActivityType.NORMAL).transfer(msg.sender, balance);
   }
 
   // 模拟减产信息

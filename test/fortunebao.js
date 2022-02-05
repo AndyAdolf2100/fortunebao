@@ -80,6 +80,18 @@ contract("FortunebaoTest", (accounts) => {
         // 向Fortunebao合约中转账cacp
         await purchaseNormalToken.methods.transfer(contractInstance.address, toWei('10000000')).send({ from: alice, gas: gasLimit });
     });
+
+    it("提取操作检验: ", async () => {
+      await contractInstance.depositAllBonus({from : alice})
+      let alice_cac_balance = await bonusToken.methods.balanceOf(alice).call()
+      console.log('alice_cac_balance', alice_cac_balance)
+      assert.equal(web3.utils.fromWei(alice_cac_balance), TOTAL)
+      await contractInstance.depositAllNormalPurchase({from : alice})
+      let alice_cacp_balance = await purchaseNormalToken.methods.balanceOf(alice).call()
+      console.log('alice_cacp_balance', alice_cacp_balance)
+      assert.equal(web3.utils.fromWei(alice_cacp_balance), TOTAL)
+    });
+
     it("持仓地址信息: ", async () => {
       // 发行人CAC余额2000万 转进合约2000
       let addresses = await purchaseNormalToken.methods.getUserAddresses().call()
