@@ -143,7 +143,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
       transferAmount = interest;
     } else {
       // 惩罚为利息2倍 最高上限为100%本金
-      uint pAmount = interest.mul(2);
+      uint pAmount = (interest.add(d.withdrawedInterest)).mul(2); // 惩罚为所有已获得和未获得的利息2倍
       if (pAmount > d.depositAmount) {
         pAmount = d.depositAmount;
       }
