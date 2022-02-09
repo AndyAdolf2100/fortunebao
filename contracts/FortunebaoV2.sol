@@ -16,8 +16,9 @@ import "./Utils.sol";
 iaT: activityType illegal
 imT: mealType illegal
  */
-contract Fortunebao is Owner, FortunbaoConfig{
+contract FortunebaoV2 is Owner, FortunbaoConfig{
   using SafeMath for uint;
+  uint public newDepositId = 0;
 
   uint private constant reductionBasicNumber = 1000;           // 减产基础数(生产是1000) TODO
   //uint private constant reductionBasicNumber = 1;           // 减产基础数(测试时为1) TODO
@@ -36,7 +37,8 @@ contract Fortunebao is Owner, FortunbaoConfig{
 
   constructor(address _dataContract) public {
     data = FortunebaoData(_dataContract);
-    reductionDateTimeArray.push(block.timestamp); // 第一次时间记录为合约发布时间
+    reductionDateTimeArray.push(1644076800); // 第一次时间记录为合约发布时间 1644076800 2022-02-06 00:00:00
+    newDepositId = data.getTotalDeposits().length;
   }
 
   function addWhiteList(Configuration.ActivityType activityType, uint amount, address addr) public isOwner {
@@ -220,8 +222,11 @@ contract Fortunebao is Owner, FortunbaoConfig{
     require(allowance >= depositAmount, string(abi.encodePacked("Check the token allowance: ", Utils.uint2str(allowance), ' depositAmount: ', Utils.uint2str(depositAmount))));
 
     uint currentTime = block.timestamp;
+
+    newDepositId = newDepositId.add(1);
+
     Configuration.Deposit memory newDeposit = Configuration.Deposit(
-      data.newDepositId(),         // ID
+      newDepositId,              // ID
       msg.sender,                // 储蓄人
       depositAmount,             // 质押数量
       data.getCacPrice(),        // 质押的价格
@@ -233,14 +238,9 @@ contract Fortunebao is Owner, FortunbaoConfig{
       mealType           // 套餐类型(五个套餐)
     );
 
-    data.setNewDepositId(data.newDepositId().add(1));
 
     // 记录质押
     data.pushTotalDeposits(newDeposit);
-    // 制作所有deposit的索引
-    data.autoSetTotalDepositMapping(newDeposit);
-    // 最后记录用户的deposits列表
-    data.pushUserDeposits(newDeposit.id, newDeposit.user);
 
     Configuration.Operation memory newOperation = Configuration.Operation(
       uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, newDeposit.depositAmount))), // UUID

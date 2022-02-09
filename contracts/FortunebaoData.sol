@@ -184,6 +184,8 @@ contract FortunebaoData is Owner, FortunbaoConfig{
   // push new Deposit
   function pushTotalDeposits(Configuration.Deposit memory d) public platform {
     totalDeposits.push(d);
+    // 制作所有deposit的索引
+    _autoSetTotalDepositMapping(d.user);
   }
 
   // push new Operation
@@ -259,19 +261,21 @@ contract FortunebaoData is Owner, FortunbaoConfig{
   }
 
   // 记录用户的deposits
-  function pushUserDeposits(uint depositId, address addr) public platform{
+  function _pushUserDeposits(uint depositId, address addr) private {
     Configuration.Deposit storage tempDeposit = totalDepositMappings[depositId];
     require(addr == tempDeposit.user, 'user deposit addr error');
     userDeposits[addr].push(tempDeposit);
   }
 
   // 记录deposit到大map上
-  function autoSetTotalDepositMapping(Configuration.Deposit memory tempDeposit) public platform {
+  function _autoSetTotalDepositMapping(address addr) private {
     require(totalDeposits.length > 0, 'totalDeposits length equal 0');
-    // Configuration.Deposit storage tempDeposit = totalDeposits[totalDeposits.length - 1];
-    // require(addr == tempDeposit.user, 'user deposit addr error');
+    Configuration.Deposit storage tempDeposit = totalDeposits[totalDeposits.length - 1];
+    require(addr == tempDeposit.user, 'user deposit addr error');
     require(totalDepositMappings[tempDeposit.id].id == 0, 'deposit id has been declared');
     totalDepositMappings[tempDeposit.id] = tempDeposit;
+
+    _pushUserDeposits(tempDeposit.id, addr);
   }
 
 

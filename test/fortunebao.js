@@ -1,5 +1,5 @@
 const CacToken = artifacts.require("CacToken"); // Cac合约
-const Fortunebao = artifacts.require("Fortunebao");
+const FortunebaoV2 = artifacts.require("FortunebaoV2");
 const FortunebaoData = artifacts.require("FortunebaoData");
 const cactoken = require('../build/contracts/CacToken.json')
 const cacpatoken = require('../build/contracts/CACPAToken.json')
@@ -63,7 +63,7 @@ contract("FortunebaoTest", (accounts) => {
         CNY_PRICE = 5000;
         tokenContract = await CacToken.new();
         dataContractInstance = await FortunebaoData.new(tokenContract.address, burning);
-        contractInstance = await Fortunebao.new(dataContractInstance.address);
+        contractInstance = await FortunebaoV2.new(dataContractInstance.address);
         console.info('tokenContract = ', tokenContract.address)
         console.info('dataContractInstance = ', dataContractInstance.address)
         console.info('contractInstance = ', contractInstance.address)
@@ -853,7 +853,7 @@ contract("FortunebaoTest", (accounts) => {
     })
 
 
-    it("质押减产 basicAmount = 1", async () => {
+    xit("质押减产 basicAmount = 1", async () => {
 
       let array = await contractInstance.getRedutionDateTime()
       let reductionCount = await contractInstance.reductionCount()
