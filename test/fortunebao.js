@@ -7,6 +7,11 @@ const cacpbtoken = require('../build/contracts/CACPBToken.json')
 const cacpctoken = require('../build/contracts/CACPCToken.json')
 const cacptoken = require('../build/contracts/CACPToken.json')
 
+
+/*
+需补全测试：
+退出质押的时候，已经提取的也要放在双倍销毁里面
+*/
 contract("FortunebaoTest", (accounts) => {
     const gasLimit = '0x1adb0'
     let catchRevert = require("./utils/exceptions.js").catchRevert;
@@ -31,9 +36,9 @@ contract("FortunebaoTest", (accounts) => {
       allOperations = await dataContractInstance.getAllOperations()
 
       console.log('totalDeposits == ')
-      console.log(totalDeposits)
+      //console.log(totalDeposits)
       console.log('allOperations == ')
-      console.log(allOperations)
+      //console.log(allOperations)
     }
 
     // 购买数量,套餐类型,循环次数
@@ -48,9 +53,9 @@ contract("FortunebaoTest", (accounts) => {
       allOperations = await dataContractInstance.getAllOperations()
 
       console.log('totalDeposits == ')
-      console.log(totalDeposits)
+      // console.log(totalDeposits)
       console.log('allOperations == ')
-      console.log(allOperations)
+      // console.log(allOperations)
     }
 
     beforeEach(async () => {
@@ -80,6 +85,19 @@ contract("FortunebaoTest", (accounts) => {
         // 向Fortunebao合约中转账cacp
         await purchaseNormalToken.methods.transfer(contractInstance.address, toWei('10000000')).send({ from: alice, gas: gasLimit });
     });
+
+    it("测试多笔手续费....", async () => {
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 4) // 白名单质押 第三轮-第五个套餐 第五个套餐最多能拿360天
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 4) // 白名单质押 第三轮-第五个套餐 第五个套餐最多能拿360天
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 4) // 白名单质押 第三轮-第五个套餐 第五个套餐最多能拿360天
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 4) // 白名单质押 第三轮-第五个套餐 第五个套餐最多能拿360天
+      await contractInstance.addWhiteList(2, toWei(1000), alice)
+      await purchase_in_white_list(2, 4) // 白名单质押 第三轮-第五个套餐 第五个套餐最多能拿360天
+    })
 
     it("提取操作检验: ", async () => {
       await contractInstance.depositAllBonus({from : alice})
@@ -835,7 +853,7 @@ contract("FortunebaoTest", (accounts) => {
     })
 
 
-    xit("质押减产 basicAmount = 1", async () => {
+    it("质押减产 basicAmount = 1", async () => {
 
       let array = await contractInstance.getRedutionDateTime()
       let reductionCount = await contractInstance.reductionCount()

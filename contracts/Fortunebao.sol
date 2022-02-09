@@ -88,9 +88,8 @@ contract Fortunebao is Owner, FortunbaoConfig{
 
     data.increaseDepositWithdrawedInterest(d.id, interest);
 
-    uint oLength = data.getAllOperations().length;
     Configuration.Operation memory newOperation = Configuration.Operation(
-      uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, oLength))), // UUID
+      uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, interest))), // UUID
       msg.sender,        // 操作人
       interest,          // 操作数量
       block.timestamp,   // 当前时间
@@ -101,8 +100,6 @@ contract Fortunebao is Owner, FortunbaoConfig{
 
     // 记录操作
     data.pushAllOperations(newOperation);
-
-    // require(false, string(abi.encodePacked("oLength:", Utils.uint2str(oLength))));
 
     data.getBonusToken().transfer(msg.sender, interest); // 利息转出
     emit WithdrawInterestSuccessEvent();
@@ -126,10 +123,9 @@ contract Fortunebao is Owner, FortunbaoConfig{
     data.increaseDepositWithdrawedInterest(d.id, interest);
     data.setDepositWithdrawed(d.id);
 
-    uint oLength = data.getAllOperations().length;
     if (!needPublishment || interest == 0) {
       Configuration.Operation memory newOperation = Configuration.Operation(
-        uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, oLength))), // UUID
+        uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, interest))), // UUID
         msg.sender,        // 操作人
         interest,          // 利息 + 本金
         block.timestamp,   // 当前时间
@@ -149,7 +145,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
       }
       // 需要惩罚 惩罚的本金数量是利息的2倍, 最少可扣除至0, 扣除的cac转移到销毁地址
       Configuration.Operation memory newOperation = Configuration.Operation(
-        uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, oLength))), // UUID
+        uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, pAmount))), // UUID
         msg.sender,        // 操作人
         pAmount,           // 惩罚数量
         block.timestamp,   // 当前时间
@@ -223,11 +219,9 @@ contract Fortunebao is Owner, FortunbaoConfig{
     uint256 allowance = token.allowance(msg.sender, address(this));
     require(allowance >= depositAmount, string(abi.encodePacked("Check the token allowance: ", Utils.uint2str(allowance), ' depositAmount: ', Utils.uint2str(depositAmount))));
 
-    uint newDepositId = data.getTotalDeposits().length.add(1);
-
     uint currentTime = block.timestamp;
     Configuration.Deposit memory newDeposit = Configuration.Deposit(
-      newDepositId,              // ID
+      data.newDepositId(),         // ID
       msg.sender,                // 储蓄人
       depositAmount,             // 质押数量
       data.getCacPrice(),        // 质押的价格
@@ -239,11 +233,17 @@ contract Fortunebao is Owner, FortunbaoConfig{
       mealType           // 套餐类型(五个套餐)
     );
 
+    data.setNewDepositId(data.newDepositId().add(1));
+
     // 记录质押
     data.pushTotalDeposits(newDeposit);
+    // 制作所有deposit的索引
+    data.autoSetTotalDepositMapping(newDeposit);
+    // 最后记录用户的deposits列表
+    data.pushUserDeposits(newDeposit.id, newDeposit.user);
 
     Configuration.Operation memory newOperation = Configuration.Operation(
-      uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, data.getAllOperations().length))), // UUID
+      uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, newDeposit.depositAmount))), // UUID
       msg.sender,                // 操作人
       newDeposit.depositAmount,  // 操作数量
       block.timestamp,           // 当前时间
@@ -254,7 +254,7 @@ contract Fortunebao is Owner, FortunbaoConfig{
     // 记录操作
     data.pushAllOperations(newOperation);
     data.setUserAddresses(msg.sender);
-    _recordReduction();
+    // _recordReduction();
 
     token.transferFrom(msg.sender, address(this), newDeposit.depositAmount); // 移动指定质押token余额至合约
     emit DepositSuccessEvent();

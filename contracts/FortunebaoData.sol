@@ -35,6 +35,7 @@ import "./Owner.sol";
 contract FortunebaoData is Owner, FortunbaoConfig{
   using SafeMath for uint;
 
+  uint public newDepositId = 0;          // 记录depositID
   address private burningAddress; // 销毁地址
   address private priceLooper;  // 价格查询员
   IERC20 private firstToken;    // CACPA token
@@ -183,8 +184,6 @@ contract FortunebaoData is Owner, FortunbaoConfig{
   // push new Deposit
   function pushTotalDeposits(Configuration.Deposit memory d) public platform {
     totalDeposits.push(d);
-    // 制作所有deposit的索引
-    _autoSetTotalDepositMapping(d.user);
   }
 
   // push new Operation
@@ -255,22 +254,24 @@ contract FortunebaoData is Owner, FortunbaoConfig{
     accessAllowed[_addr] = false;
   }
 
+  function setNewDepositId(uint newId) public platform{
+    newDepositId = newId;
+  }
+
   // 记录用户的deposits
-  function _pushUserDeposits(uint depositId, address addr) private {
+  function pushUserDeposits(uint depositId, address addr) public platform{
     Configuration.Deposit storage tempDeposit = totalDepositMappings[depositId];
     require(addr == tempDeposit.user, 'user deposit addr error');
     userDeposits[addr].push(tempDeposit);
   }
 
   // 记录deposit到大map上
-  function _autoSetTotalDepositMapping(address addr) private {
+  function autoSetTotalDepositMapping(Configuration.Deposit memory tempDeposit) public platform {
     require(totalDeposits.length > 0, 'totalDeposits length equal 0');
-    Configuration.Deposit storage tempDeposit = totalDeposits[totalDeposits.length - 1];
-    require(addr == tempDeposit.user, 'user deposit addr error');
+    // Configuration.Deposit storage tempDeposit = totalDeposits[totalDeposits.length - 1];
+    // require(addr == tempDeposit.user, 'user deposit addr error');
     require(totalDepositMappings[tempDeposit.id].id == 0, 'deposit id has been declared');
     totalDepositMappings[tempDeposit.id] = tempDeposit;
-
-    _pushUserDeposits(tempDeposit.id, addr);
   }
 
 
