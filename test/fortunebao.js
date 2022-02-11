@@ -1,5 +1,5 @@
 const CacToken = artifacts.require("CacToken"); // Cac合约
-const FortunebaoV2 = artifacts.require("FortunebaoV2");
+const FortunebaoV3 = artifacts.require("FortunebaoV3");
 const FortunebaoData = artifacts.require("FortunebaoData");
 const cactoken = require('../build/contracts/CacToken.json')
 const cacpatoken = require('../build/contracts/CACPAToken.json')
@@ -63,7 +63,7 @@ contract("FortunebaoTest", (accounts) => {
         CNY_PRICE = 5000;
         tokenContract = await CacToken.new();
         dataContractInstance = await FortunebaoData.new(tokenContract.address, burning);
-        contractInstance = await FortunebaoV2.new(dataContractInstance.address);
+        contractInstance = await FortunebaoV3.new(dataContractInstance.address);
         console.info('tokenContract = ', tokenContract.address)
         console.info('dataContractInstance = ', dataContractInstance.address)
         console.info('contractInstance = ', contractInstance.address)
@@ -819,15 +819,15 @@ contract("FortunebaoTest", (accounts) => {
       await contractInstance.mockReductionInfo(currentTime())
       await contractInstance.mockReductionInfo(currentTime() + 2 * 86400)
 
-      await purchase(toWei(1000), 4, 1) // 仅第一天的利息能拿8，之后都拿6.4
+      await purchase(toWei(1000), 4, 1)
       my_deposits = await dataContractInstance.getTotalDeposits()
       last_deposit = my_deposits[my_deposits.length - 1]
       console.log('7 last_deposit = ', last_deposit)
       let interestInfo = await contractInstance.getInterest(last_deposit.id, currentTime() + 86400 * 500)
       console.log('7 interestInfo = ', interestInfo)
-      // 第一天利息8，之后每一天利息都是6.4
-      // 8 * 1 + 359 * 6.4 = 2305.6
-      assert.equal(interestInfo.interest, '2305600000000000000000')
+      // 回本前的利息能拿8，之后都拿6.4 (本金百分百才减产100%)
+      // 235 * 6.4 + 125 * 8 = 2504
+      assert.equal(interestInfo.interest, '2504000000000000000000')
       await contractInstance.withdrawPrincipal(last_deposit.id, currentTime() + 86400 * 500)
       let allOperations = await dataContractInstance.getAllOperations()
       lastOperation = allOperations[allOperations.length - 1]

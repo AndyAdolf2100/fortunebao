@@ -16,13 +16,13 @@ import "./Utils.sol";
 iaT: activityType illegal
 imT: mealType illegal
  */
-contract FortunebaoV2 is Owner, FortunbaoConfig{
+contract FortunebaoV3 is Owner, FortunbaoConfig{
   using SafeMath for uint;
   uint public newDepositId = 0;
 
   uint private constant reductionBasicNumber = 1000;           // 减产基础数(生产是1000) TODO
   //uint private constant reductionBasicNumber = 1;           // 减产基础数(测试时为1) TODO
-  bool private isProductionMode = true;                       // 当前环境 TODO
+  bool private isProductionMode = false;                       // 当前环境 TODO
 
   FortunebaoData data; // 数据合约 所有常规不变数据从这里面取
 
@@ -44,6 +44,12 @@ contract FortunebaoV2 is Owner, FortunbaoConfig{
   function addWhiteList(Configuration.ActivityType activityType, uint amount, address addr) public isOwner {
     data.setWhiteAddressAmount(addr, amount, activityType);
     data.pushAddresses(addr, activityType);
+  }
+
+  // 某一个deposit刚入场时的减半次数
+  function getDepositCreateCutIndex(uint depositId) public view returns(uint) {
+    Configuration.Deposit memory d = data.getTotalDepositMapping(depositId);
+    return _calcReductionDateTimeCutIndex(0, d.createdDate);
   }
 
   // 计算利息
@@ -281,9 +287,14 @@ contract FortunebaoV2 is Owner, FortunbaoConfig{
       // string memory message = string(abi.encodePacked("getInterestDate:", Utils.uint2str(getInterestDate), "dateCutIndex:", Utils.uint2str(uint(dateCutIndex)))); // 备注
       // require(dateCutIndex == 1, message);
       uint currentInterest = 0;
-      if (totalInterest <= depositAmount && tempDeposit.activityType != Configuration.ActivityType.NORMAL ) {
+      if (totalInterest < depositAmount) {
+        if ( tempDeposit.activityType != Configuration.ActivityType.NORMAL ) {
          // 利息没有达到100%质押数量 且 属于预约轮活动的用户 利息按照最初的来计算 不做减产
-         currentInterest = Configuration._makeInterestRate(mealType, depositAmount); // 计算出当天的利息
+          currentInterest = Configuration._makeInterestRate(mealType, depositAmount); // 计算出当天的利息
+        } else {
+          uint createCutIndex = _calcReductionDateTimeCutIndex(0, tempDeposit.createdDate);
+          currentInterest = Configuration._makeInterestRate(mealType, _calcReductionInterest(createCutIndex, depositAmount)); // 计算出当天的利息
+        }
       } else {
          currentInterest = Configuration._makeInterestRate(mealType, _calcReductionInterest(dateCutIndex, depositAmount)); // 计算出当天的利息
       }
@@ -390,7 +401,7 @@ contract FortunebaoV2 is Owner, FortunbaoConfig{
 
   // 模拟减产信息
   function mockReductionInfo(uint date) public isOwner{
-      require(!isProductionMode, 'Production mode can not do it.');
+      // require(!isProductionMode, 'Production mode can not do it.');
       reductionDateTimeArray.push(date);
       reductionCount = reductionDateTimeArray.length - 1;
   }
