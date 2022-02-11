@@ -22,7 +22,7 @@ contract FortunebaoV3 is Owner, FortunbaoConfig{
 
   uint private constant reductionBasicNumber = 1000;           // 减产基础数(生产是1000) TODO
   //uint private constant reductionBasicNumber = 1;           // 减产基础数(测试时为1) TODO
-  bool private isProductionMode = false;                       // 当前环境 TODO
+  bool private isProductionMode = true;                       // 当前环境 TODO
 
   FortunebaoData data; // 数据合约 所有常规不变数据从这里面取
 
