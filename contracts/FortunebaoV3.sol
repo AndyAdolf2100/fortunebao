@@ -131,7 +131,7 @@ contract FortunebaoV3 is Owner, FortunbaoConfig{
     data.increaseDepositWithdrawedInterest(d.id, interest);
     data.setDepositWithdrawed(d.id);
 
-    if (!needPublishment || interest == 0) {
+    if (!needPublishment) {
       Configuration.Operation memory newOperation = Configuration.Operation(
         uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, interest))), // UUID
         msg.sender,        // 操作人
