@@ -1,6 +1,7 @@
 const CacToken = artifacts.require("CacToken"); // Cac合约
 const FortunebaoV3 = artifacts.require("FortunebaoV3");
 const FortunebaoData = artifacts.require("FortunebaoData");
+const FortunebaoDataOperation = artifacts.require("FortunebaoDataOperation");
 const cactoken = require('../build/contracts/CacToken.json')
 const cacpatoken = require('../build/contracts/CACPAToken.json')
 const cacpbtoken = require('../build/contracts/CACPBToken.json')
@@ -64,6 +65,7 @@ contract("FortunebaoTest", (accounts) => {
         tokenContract = await CacToken.new();
         dataContractInstance = await FortunebaoData.new(tokenContract.address, burning);
         contractInstance = await FortunebaoV3.new(dataContractInstance.address);
+        dataOperationContractInstance = await FortunebaoDataOperation.new(dataContractInstance.address);
         console.info('tokenContract = ', tokenContract.address)
         console.info('dataContractInstance = ', dataContractInstance.address)
         console.info('contractInstance = ', contractInstance.address)
@@ -97,6 +99,24 @@ contract("FortunebaoTest", (accounts) => {
       await purchase_in_white_list(2, 4) // 白名单质押 第三轮-第五个套餐 第五个套餐最多能拿360天
       await contractInstance.addWhiteList(2, toWei(1000), alice)
       await purchase_in_white_list(2, 4) // 白名单质押 第三轮-第五个套餐 第五个套餐最多能拿360天
+
+      let a = await dataOperationContractInstance.getAllOperationIds()
+      console.log('a = ', a)
+      let b = await dataOperationContractInstance.getOperationId(0)
+      console.log('b = ', b)
+      let c = await dataOperationContractInstance.getOperationUser(0)
+      console.log('c = ', c)
+      let d = await dataOperationContractInstance.getOperationAmount(0)
+      console.log('d = ', d)
+      let e = await dataOperationContractInstance.getOperationCreatedDate(0)
+      console.log('e = ', e)
+      let f = await dataOperationContractInstance.getOperationType(0)
+      console.log('f = ', f)
+      let g = await dataOperationContractInstance.getOperationComment(0)
+      console.log('g = ', g)
+      let h = await dataOperationContractInstance.getOperationDepositId(0)
+      console.log('h = ', h)
+
     })
 
     it("提取操作检验: ", async () => {
