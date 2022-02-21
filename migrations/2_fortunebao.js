@@ -1,6 +1,7 @@
 const CacToken = artifacts.require("CacToken");
 const FortunebaoV3 = artifacts.require("FortunebaoV3");
 const FortunebaoData = artifacts.require("FortunebaoData");
+const FortunebaoDataOperation = artifacts.require("FortunebaoDataOperation");
 
 module.exports = async function (deployer) {
   //await deployer.deploy(CacToken);      // 创造cac的合约
@@ -12,9 +13,12 @@ module.exports = async function (deployer) {
   // const cacAddress = "0x4d66769a287a6296f8e9e968234017fc0f03b55e"; // CAC合约地址
   // await deployer.deploy(FortunebaoData, cacAddress, burning_address);
 
-  // const dataContract = await FortunebaoData.deployed();
-  // await deployer.deploy(FortunebaoV3, dataContract.address);
+   //const dataContract = await FortunebaoData.deployed();
+   //await deployer.deploy(FortunebaoV3, dataContract.address);
+   //await deployer.deploy(FortunebaoDataOperation, dataContract.address);
 
   // 正式
-  await deployer.deploy(FortunebaoV3, '0x88b8cF3e170EfCd7873512fabBF685C3A53792ad');
+  // await deployer.deploy(FortunebaoV3, '0x88b8cF3e170EfCd7873512fabBF685C3A53792ad');
+  // 正式
+  await deployer.deploy(FortunebaoDataOperation, '0x88b8cF3e170EfCd7873512fabBF685C3A53792ad');
 };
