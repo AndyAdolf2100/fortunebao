@@ -299,7 +299,7 @@ contract FortunebaoV3 is Owner, FortunbaoConfig{
          currentInterest = Configuration._makeInterestRate(mealType, _calcReductionInterest(dateCutIndex, depositAmount)); // 计算出当天的利息
       }
       // 不超过本金的利息有预约轮的2、1.5、1.3倍
-      if (totalInterest <= depositAmount) {
+      if (totalInterest < depositAmount) {
         currentInterest = Configuration._getInterestIncreaseRate(tempDeposit.activityType, currentInterest);
       }
       totalInterest = totalInterest.add(currentInterest); // 利息加到总利息之中
